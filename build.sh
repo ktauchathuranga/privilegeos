@@ -30,16 +30,12 @@ error() {
 
 cleanup() {
     log "Cleaning up..."
-    # In case of script failure, unmount loop device if it exists
     if losetup -a | grep -q "${LOOP_DEV}"; then
         sudo umount "${BUILD_DIR}/mnt" || true
         sudo losetup -d "${LOOP_DEV}" || true
     fi
-    # Don't remove the final build directory unless specified
-    # rm -rf "${BUILD_DIR}"
 }
 
-# Trap errors and call cleanup
 trap cleanup EXIT
 
 # --- Main Build Steps ---
@@ -77,11 +73,9 @@ build_busybox() {
     log "Building BusyBox..."
     cd "$BUSYBOX_SRC_DIR"
     
-    # Clean and configure for a static build
     make distclean
     make defconfig
     
-    # Enable static linking so we don't need to worry about shared libraries
     sed -i 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
     sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
     
@@ -95,37 +89,42 @@ build_busybox() {
 create_initramfs_content() {
     log "Creating initramfs content..."
     
-    # The mknod calls are removed. The kernel's devtmpfs will create these automatically.
+    # Create essential device nodes
+    sudo mknod -m 622 "${INITRAMFS_DIR}/dev/console" c 5 1
+    sudo mknod -m 666 "${INITRAMFS_DIR}/dev/null" c 1 3
+    sudo mknod -m 666 "${INITRAMFS_DIR}/dev/zero" c 1 5
+    sudo mknod -m 666 "${INITRAMFS_DIR}/dev/tty" c 5 0
+    sudo mknod -m 666 "${INITRAMFS_DIR}/dev/tty0" c 4 0
+
+    # Create init symlink
+    ln -sf ../bin/busybox "${INITRAMFS_DIR}/sbin/init"
     
-    # Create the main init script
+    # Create init script
+    cat <<EOF > "${INITRAMFS_DIR}/init"
+#!/bin/sh
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+exec /sbin/init
+EOF
+    chmod +x "${INITRAMFS_DIR}/init"
+
+    # Create inittab
     cat <<EOF > "${INITRAMFS_DIR}/etc/inittab"
-# This is the first process run by init
 ::sysinit:/etc/init.d/rcS
-
-# Start a shell on the console
 ::askfirst:-/bin/sh
-
-# What to do when restarting/halting
 ::restart:/sbin/init
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r
-::shutdown:/sbin/swapoff -a
 EOF
 
-    # Create the system startup script
+    # Create rcS
     mkdir -p "${INITRAMFS_DIR}/etc/init.d"
     cat <<EOF > "${INITRAMFS_DIR}/etc/init.d/rcS"
 #!/bin/sh
 
-# Mount essential filesystems
-mount -t proc none /proc
-mount -t sysfs none /sys
-
-# devtmpfs will automatically create /dev/null, /dev/console, etc.
-# This is the key step that makes the manual mknod calls unnecessary.
-mount -t devtmpfs none /dev
-
-# Display a welcome message
 echo ""
 echo "  ____       _ _ _         _   ___  ____  "
 echo " |  _ \ _ __(_) | |  _ __ (_) / _ \/ ___| "
@@ -137,12 +136,10 @@ echo ""
 echo "Welcome to ${OS_NAME}! Type 'poweroff' or 'reboot' to exit."
 echo ""
 
-# Set hostname
 hostname -F /etc/hostname
 EOF
     chmod +x "${INITRAMFS_DIR}/etc/init.d/rcS"
 
-    # Set a hostname
     echo "${OS_NAME}" > "${INITRAMFS_DIR}/etc/hostname"
     
     log "initramfs content created."
@@ -155,8 +152,7 @@ build_kernel() {
     make mrproper
     make defconfig
     
-    # Enable kernel options required for a minimal UEFI boot
-    log "Configuring kernel for UEFI boot and QEMU hardware..."
+    # Essential kernel configs
     ./scripts/config --enable CONFIG_EFI_STUB
     ./scripts/config --enable CONFIG_EFI
     ./scripts/config --enable CONFIG_FB_EFI
@@ -164,66 +160,43 @@ build_kernel() {
     ./scripts/config --enable CONFIG_VIRTIO_BLK
     ./scripts/config --enable CONFIG_DEVTMPFS
     ./scripts/config --enable CONFIG_DEVTMPFS_MOUNT
-    
-    # --- FIX STARTS HERE ---
-    # Enable the driver for the legacy PC serial port (8250/16550A) used by "qemu -serial stdio"
     ./scripts/config --enable CONFIG_SERIAL_8250
-    # Allow the legacy serial port to be used as a system console
     ./scripts/config --enable CONFIG_SERIAL_8250_CONSOLE
-    # --- FIX ENDS HERE ---
-
-    # NOTE: You already enabled CONFIG_VIRTIO_CONSOLE, which is good, but the
-    # QEMU command "-serial stdio" creates a legacy serial port, not a virtio one.
-    # To use a virtio console, you'd change the QEMU flags. For now, enabling
-    # the legacy driver is the correct fix for the current script.
-    ./scripts/config --enable CONFIG_VIRTIO_CONSOLE # This is fine to leave enabled
+    ./scripts/config --enable CONFIG_VIRTIO_CONSOLE
     
-    # Embed our initramfs directly into the kernel executable
+    # Initramfs config
     ./scripts/config --enable CONFIG_INITRAMFS_SOURCE
     ./scripts/config --set-str CONFIG_INITRAMFS_SOURCE "${INITRAMFS_DIR}"
     
-    # Set a default command line
+    # Command line
     ./scripts/config --enable CONFIG_CMDLINE_BOOL
-    ./scripts/config --set-str CONFIG_CMDLINE "quiet console=ttyS0"
+    ./scripts/config --set-str CONFIG_CMDLINE "quiet console=ttyS0 init=/init"
 
     make -j$(nproc) bzImage
     
     cd "$SCRIPT_DIR"
-    log "Kernel build complete. The bootable EFI file is arch/x86/boot/bzImage"
+    log "Kernel build complete."
 }
 
 create_uefi_disk_image() {
     log "Creating UEFI disk image..."
     
-    # Create a 256MB disk image
     dd if=/dev/zero of="${DISK_IMG}" bs=1M count=256
-    
-    # Create a GPT partition table and an EFI System Partition (ESP)
     parted -s "${DISK_IMG}" mklabel gpt
     parted -s "${DISK_IMG}" mkpart ESP fat32 1MiB 100%
     parted -s "${DISK_IMG}" set 1 esp on
     
-    # Format the partition with FAT32
-    # We use a loopback device to mount the partition from the image file
     LOOP_DEV=$(sudo losetup -f --show -P "${DISK_IMG}")
     if [ -z "$LOOP_DEV" ]; then
         error "Failed to set up loopback device."
     fi
     
-    # The partition is at ${LOOP_DEV}p1
     sudo mkfs.vfat -F 32 "${LOOP_DEV}p1"
-    
-    # Mount the partition
     mkdir -p "${BUILD_DIR}/mnt"
     sudo mount "${LOOP_DEV}p1" "${BUILD_DIR}/mnt"
-    
-    # Create the standard UEFI boot directory structure
     sudo mkdir -p "${BUILD_DIR}/mnt/EFI/BOOT"
-    
-    # Copy the kernel and rename it to the default UEFI bootloader name
     sudo cp "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" "${BUILD_DIR}/mnt/EFI/BOOT/BOOTX64.EFI"
     
-    # Unmount and detach the loopback device
     sudo umount "${BUILD_DIR}/mnt"
     sudo losetup -d "${LOOP_DEV}"
     
@@ -241,7 +214,8 @@ run_qemu() {
         -bios /usr/share/ovmf/x64/OVMF.4m.fd \
         -drive file="${DISK_IMG}",format=raw,if=virtio \
         -serial stdio \
-        -display none
+        -display none \
+        -no-reboot
 }
 
 # --- Main Execution Flow ---
