@@ -163,6 +163,11 @@ build_kernel() {
     ./scripts/config --enable CONFIG_SERIAL_8250
     ./scripts/config --enable CONFIG_SERIAL_8250_CONSOLE
     ./scripts/config --enable CONFIG_VIRTIO_CONSOLE
+    ./scripts/config --enable CONFIG_FB
+    ./scripts/config --enable CONFIG_FB_SIMPLE
+    ./scripts/config --enable CONFIG_FRAMEBUFFER_CONSOLE
+    ./scripts/config --enable CONFIG_LOGO
+    ./scripts/config --enable CONFIG_LOGO_LINUX_CLUT224
     
     # Initramfs config
     ./scripts/config --enable CONFIG_INITRAMFS_SOURCE
@@ -170,7 +175,7 @@ build_kernel() {
     
     # Command line
     ./scripts/config --enable CONFIG_CMDLINE_BOOL
-    ./scripts/config --set-str CONFIG_CMDLINE "quiet console=ttyS0 init=/init"
+    ./scripts/config --set-str CONFIG_CMDLINE "quiet console=tty0"
 
     make -j$(nproc) bzImage
     
@@ -214,7 +219,6 @@ run_qemu() {
         -bios /usr/share/ovmf/x64/OVMF.4m.fd \
         -drive file="${DISK_IMG}",format=raw,if=virtio \
         -serial stdio \
-        -display none \
         -no-reboot
 }
 
