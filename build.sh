@@ -70,6 +70,8 @@ setup_workspace() {
     rm -rf "$BUILD_DIR"
     mkdir -p "$BUILD_DIR"
     mkdir -p "${INITRAMFS_DIR}"/{bin,sbin,etc,proc,sys,dev,usr/bin,usr/sbin,tmp,root}
+    # Create /dev/pts directory explicitly
+    mkdir -p "${INITRAMFS_DIR}/dev/pts"
     chmod 1777 "${INITRAMFS_DIR}/tmp"
     log "Workspace created at ${BUILD_DIR}"
 }
@@ -104,14 +106,25 @@ create_initramfs_content() {
     cat <<EOF > "${INITRAMFS_DIR}/init"
 #!/bin/sh
 
+# Force output to the video console
+exec > /dev/tty0 2>&1
+
 # Mount essential virtual filesystems
 mount -t proc none /proc
 mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 
+# Create /dev/pts directory if it doesn't exist
+mkdir -p /dev/pts
+
 # Load common modules for hardware support
-modprobe fbcon || echo "Framebuffer console not available"
-modprobe vt || echo "Virtual terminal not available"
+modprobe fbcon 2>/dev/null || echo "Framebuffer console not available"
+modprobe vt 2>/dev/null || echo "Virtual terminal not available"
+
+# Try loading common graphics drivers
+modprobe i915 2>/dev/null || echo "Intel graphics not available"  # Intel
+modprobe amdgpu 2>/dev/null || echo "AMD graphics not available"  # AMD
+modprobe nouveau 2>/dev/null || echo "NVIDIA graphics not available"  # NVIDIA
 
 # Initialize the framebuffer device
 for i in /sys/class/graphics/fb*; do
@@ -150,14 +163,22 @@ ttyS0::respawn:/bin/sh
 ::shutdown:/sbin/swapoff -a
 EOF
 
-    # Create rcS script (runs at boot)
+    # Create rcS script (runs at boot) with debugging info
     mkdir -p "${INITRAMFS_DIR}/etc/init.d"
     cat <<EOF > "${INITRAMFS_DIR}/etc/init.d/rcS"
 #!/bin/sh
 
+# Debug info
+touch /tmp/rcS_started
+echo "rcS script started" > /dev/console
+
+# Force output to video console
+exec > /dev/tty0 2>&1
+
 # Mount additional filesystems that might be needed
 mount -t tmpfs none /tmp
-mount -t devpts none /dev/pts
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts
 
 # Display hardware information
 echo ""
@@ -172,6 +193,7 @@ echo "Welcome to ${OS_NAME}!"
 echo ""
 
 # Set hostname
+echo "${OS_NAME}" > /etc/hostname
 hostname -F /etc/hostname
 
 # Print hardware info
@@ -193,8 +215,12 @@ done
 echo ""
 echo "Type 'poweroff' or 'reboot' to exit."
 echo ""
+
+# Create another debug file to verify completion
+touch /tmp/rcS_completed
 EOF
-    chmod +x "${INITRAMFS_DIR}/etc/init.d/rcS"
+    # Set proper execution permissions
+    chmod 755 "${INITRAMFS_DIR}/etc/init.d/rcS"
 
     echo "${OS_NAME}" > "${INITRAMFS_DIR}/etc/hostname"
     
@@ -299,7 +325,7 @@ build_kernel() {
     
     # Command line
     ./scripts/config --enable CONFIG_CMDLINE_BOOL
-    ./scripts/config --set-str CONFIG_CMDLINE "console=tty0 console=ttyS0 quiet"
+    ./scripts/config --set-str CONFIG_CMDLINE "console=tty0 console=ttyS0"
     
     # Add KMS support
     ./scripts/config --enable CONFIG_DRM_KMS_HELPER
@@ -425,7 +451,7 @@ run_qemu() {
 
 # --- Main Execution Flow ---
 main() {
-  #  check_dependencies
+ #   check_dependencies
     setup_workspace
     build_busybox
     create_initramfs_content
