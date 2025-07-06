@@ -381,22 +381,22 @@ cd privilegeos
 
 #### 2. Basic Build
 ```bash
-./build_privilege_os.sh
+./build.sh
 ```
 
 #### 3. Custom Build Options
 ```bash
 # Clean build with custom size
-./build_privilege_os.sh --clean --size 1024 --threads 8
+./build.sh --clean --size 1024 --threads 8
 
 # QEMU-only testing
-./build_privilege_os.sh --qemu-only
+./build.sh --qemu-only
 
 # Custom kernel and BusyBox versions
-./build_privilege_os.sh --kernel 6.15.3 --busybox 1.36.1
+./build.sh --kernel 6.15.3 --busybox 1.36.1
 
 # Use custom configurations
-./build_privilege_os.sh --kernel-config my_kernel.config --busybox-config my_busybox.config
+./build.sh --kernel-config my_kernel.config --busybox-config my_busybox.config
 ```
 
 #### 4. Build Options Reference
@@ -431,7 +431,7 @@ chmod +x scripts/myscript.sh
 
 #### 3. Rebuild
 ```bash
-./build_privilege_os.sh
+./build.sh
 ```
 
 #### 4. Use in PrivilegeOS
@@ -445,7 +445,7 @@ Hello from custom script!
 
 ```
 privilegeos/
-├── build_privilege_os.sh      # Main build script
+├── build.sh      # Main build script
 ├── scripts/                   # Custom scripts directory
 │   ├── getadmin.sh           # Windows admin bypass tool
 │   ├── putadmin.sh           # Windows restoration tool
@@ -775,10 +775,10 @@ git checkout -b develop
 #### Testing Changes
 ```bash
 # Test build process
-./build_privilege_os.sh --qemu-only
+./build.sh --qemu-only
 
 # Test specific components
-./build_privilege_os.sh --clean --skip-qemu
+./build.sh --clean --skip-qemu
 
 # Test in virtual machine
 qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.fd -drive file=build/PrivilegeOS.img,format=raw
