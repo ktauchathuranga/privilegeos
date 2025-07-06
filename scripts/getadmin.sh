@@ -724,7 +724,7 @@ perform_bypass() {
 
 # Main execution starts here...
 # Shwoing legal warning
-show_legal_warning
+#show_legal_warning
 
 log "Starting Windows partition scan..."
 
