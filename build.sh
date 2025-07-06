@@ -463,13 +463,14 @@ echo "root:x:0:" > /etc/group
 chmod 644 /etc/passwd /etc/group
 
 echo ""
-echo -e "\e[1;34m  ____       _ _ _         _   ___  ____  \e[0m"
-echo -e "\e[1;34m |  _ \\ _ __(_) | |  _ __ (_) / _ \\/ ___| \e[0m"
-echo -e "\e[1;34m | |_) | '__| | | | | '_ \\| |/ / | \\___ \\ \e[0m"
-echo -e "\e[1;34m |  __/| |  | | | |_| |_) | / /| |___) |\e[0m"
-echo -e "\e[1;34m |_|   |_|  |_|_|\\___/ .__/|_\\/  \\____/ \e[0m"
-echo -e "\e[1;34m                     |_|                \e[0m"
+echo -e "\e[1;34m  ____       _       _ _                  ___  ____  \e[0m"
+echo -e "\e[1;34m |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___| \e[0m"
+echo -e "\e[1;34m | |_) | '__| \ \ / / | |/ _ \/ _\ |/ _ \ | | \___ \ \e[0m"
+echo -e "\e[1;34m |  __/| |  | |\ V /| | |  __/ (_| |  __/ |_| |___) |\e[0m"
+echo -e "\e[1;34m |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/ \e[0m"
+echo -e "\e[1;34m                              |___/                 \e[0m"
 echo ""
+
 echo -e "\e[1mWelcome to ${OS_NAME}!\e[0m"
 echo -e "\e[1mBuild date: $(date)\e[0m"
 echo -e "\e[1mYou are running as: \e[32mROOT\e[0m"
@@ -557,15 +558,29 @@ install_custom_scripts() {
         for script in "${CUSTOM_SCRIPTS_DIR}"/*; do
             if [ -f "$script" ]; then
                 SCRIPT_NAME=$(basename "$script")
-                log "Installing custom script: $SCRIPT_NAME"
+                # Remove .sh extension if present for cleaner command names
+                CLEAN_NAME="${SCRIPT_NAME%.sh}"
+                
+                log "Installing custom script: $SCRIPT_NAME as '$CLEAN_NAME'"
+                
+                # Install to /usr/local/bin with original name
                 cp "$script" "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
                 chmod +x "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
+                
+                # Create symlink in /bin for easy access (without .sh extension)
+                ln -sf "/usr/local/bin/$SCRIPT_NAME" "${INITRAMFS_DIR}/bin/$CLEAN_NAME"
+                
+                # Also create symlink with original name if it had .sh extension
+                if [ "$SCRIPT_NAME" != "$CLEAN_NAME" ]; then
+                    ln -sf "/usr/local/bin/$SCRIPT_NAME" "${INITRAMFS_DIR}/bin/$SCRIPT_NAME"
+                fi
+                
                 SCRIPT_COUNT=$((SCRIPT_COUNT + 1))
             fi
         done
         
         if [ "$SCRIPT_COUNT" -gt 0 ]; then
-            log "Installed $SCRIPT_COUNT custom scripts."
+            log "Installed $SCRIPT_COUNT custom scripts with symlinks in /bin"
         else
             warning "No custom scripts found in ${CUSTOM_SCRIPTS_DIR}"
             warning "You can add scripts to ${CUSTOM_SCRIPTS_DIR} and rebuild to include them."
@@ -632,9 +647,13 @@ echo "  cd /mnt"
 echo "  ls -la"
 EOF
             chmod +x "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
-            cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives"
-            chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives"
-            log "Created and installed default getdrives script."
+            cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
+            chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
+            
+            # Create symlinks for getdrives
+            ln -sf "/usr/local/bin/getdrives.sh" "${INITRAMFS_DIR}/bin/getdrives"
+            
+            log "Created and installed default getdrives script with symlinks."
             SCRIPT_COUNT=1
         fi
     else
@@ -704,14 +723,14 @@ echo "  cd /mnt"
 echo "  ls -la"
 EOF
         chmod +x "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
-        cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives"
-        chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives"
-        log "Created and installed default getdrives script."
+        cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
+        chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
+        
+        # Create symlinks for getdrives
+        ln -sf "/usr/local/bin/getdrives.sh" "${INITRAMFS_DIR}/bin/getdrives"
+        
+        log "Created and installed default getdrives script with symlinks."
     fi
-    
-    # Create symlinks for convenience
-    ln -sf "${INITRAMFS_DIR}/usr/local/bin/getdrives" "${INITRAMFS_DIR}/usr/local/bin/lsblk" 2>/dev/null || true
-    ln -sf "${INITRAMFS_DIR}/usr/local/bin/getdrives" "${INITRAMFS_DIR}/usr/local/bin/disks" 2>/dev/null || true
 }
 
 build_kernel() {
@@ -1086,7 +1105,18 @@ main() {
     SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f 2>/dev/null | wc -l)
     if [ "$SCRIPT_COUNT" -gt 0 ]; then
         echo -e "${GREEN}- Installed custom scripts: ${SCRIPT_COUNT}${NC}"
-        echo -e "${GREEN}  $(ls -1 "${INITRAMFS_DIR}/usr/local/bin" 2>/dev/null | tr '\n' ' ')${NC}"
+        echo -e "${GREEN}  Available commands (in /bin):${NC}"
+        # Show the symlinked commands
+        for script in "${INITRAMFS_DIR}"/usr/local/bin/*; do
+            if [ -f "$script" ]; then
+                SCRIPT_NAME=$(basename "$script")
+                CLEAN_NAME="${SCRIPT_NAME%.sh}"
+                echo -e "${GREEN}    - $CLEAN_NAME${NC}"
+                if [ "$SCRIPT_NAME" != "$CLEAN_NAME" ]; then
+                    echo -e "${GREEN}    - $SCRIPT_NAME${NC}"
+                fi
+            fi
+        done
     else
         echo -e "${YELLOW}- No custom scripts installed${NC}"
         echo -e "${YELLOW}  Add scripts to ${CUSTOM_SCRIPTS_DIR} before building to include them${NC}"
