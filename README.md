@@ -6,6 +6,7 @@
 
 ## 📋 Table of Contents
 
+<<<<<<< HEAD
 * [Overview](#-overview)
 * [Features](#-features)
 * [System Requirements](#-system-requirements)
@@ -62,6 +63,85 @@ This tool helps security professionals and students understand:
 - How to detect such attacks
 - How to defend against these techniques
 - Proper security testing methodologies
+=======
+* [🔍 Overview](#-overview)
+* [✨ Features](#-features)
+
+  * [Core System](#core-system)
+  * [Security Tools](#security-tools)
+  * [User Experience](#user-experience)
+* [💻 System Requirements](#-system-requirements)
+
+  * [Minimum Requirements](#minimum-requirements)
+  * [Recommended Requirements](#recommended-requirements)
+  * [Supported Hardware](#supported-hardware)
+* [🚀 Installation](#-installation)
+
+  * [Quick Start](#quick-start)
+  * [Alternative Methods](#alternative-methods)
+
+    * [Using Balena Etcher (GUI)](#using-balena-etcher-gui)
+    * [Using Rufus (Windows)](#using-rufus-windows)
+* [📖 Usage](#-usage)
+
+  * [First Boot](#first-boot)
+  * [Basic Commands](#basic-commands)
+  * [Command Reference](#command-reference)
+* [🛠️ Built-in Tools](#️-built-in-tools)
+
+  * [Drive Management Tools](#drive-management-tools)
+
+    * [`getdrives`](#getdrives)
+  * [Windows Admin Bypass Tools](#windows-admin-bypass-tools)
+
+    * [`getadmin`](#getadmin)
+    * [`putadmin`](#putadmin)
+* [🔧 Windows Admin Bypass](#-windows-admin-bypass)
+
+  * [Overview](#overview-1)
+  * [How It Works](#how-it-works)
+  * [Usage Process](#usage-process)
+  * [Security Considerations](#security-considerations)
+* [🔨 Building from Source](#-building-from-source)
+
+  * [Prerequisites](#prerequisites)
+
+    * [Ubuntu/Debian](#required-packages-ubuntudebian)
+    * [Fedora/CentOS](#required-packages-fedoracentos)
+  * [Build Process](#build-process)
+
+    * [Clone Repository](#1-clone-repository)
+    * [Basic Build](#2-basic-build)
+    * [Custom Build Options](#3-custom-build-options)
+    * [Build Options Reference](#4-build-options-reference)
+    * [Adding Custom Scripts](#adding-custom-scripts)
+    * [Build Directory Structure](#build-directory-structure)
+* [⚙️ Configuration](#️-configuration)
+
+  * [Kernel Configuration](#kernel-configuration)
+  * [BusyBox Configuration](#busybox-configuration)
+  * [Custom Configurations](#custom-configurations)
+* [🔧 Troubleshooting](#-troubleshooting)
+
+  * [Common Issues](#common-issues)
+  * [Debug Information](#debug-information)
+  * [Log Files](#log-files)
+  * [Getting Help](#getting-help)
+* [🔒 Security Notice](#-security-notice)
+
+  * [Legal Disclaimer](#legal-disclaimer)
+  * [Ethical Guidelines](#ethical-guidelines)
+  * [Technical Security](#technical-security)
+  * [Updates and Patches](#updates-and-patches)
+* [🤝 Contributing](#-contributing)
+
+  * [Development Process](#development-process)
+  * [Contribution Guidelines](#contribution-guidelines)
+  * [Development Environment](#development-environment)
+* [📄 License](#-license)
+* [📝 Changelog](#-changelog)
+* [🙏 Acknowledgments](#-acknowledgments)
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 
 ## 🔍 Overview
 
@@ -422,12 +502,17 @@ cd privilegeos
 
 #### 2. Basic Build
 ```bash
+<<<<<<< HEAD
 ./build.sh
+=======
+./build_privilege_os.sh
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 ```
 
 #### 3. Custom Build Options
 ```bash
 # Clean build with custom size
+<<<<<<< HEAD
 ./build.sh --clean --size 1024 --threads 8
 
 # QEMU-only testing
@@ -438,6 +523,18 @@ cd privilegeos
 
 # Use custom configurations
 ./build.sh --kernel-config my_kernel.config --busybox-config my_busybox.config
+=======
+./build_privilege_os.sh --clean --size 1024 --threads 8
+
+# QEMU-only testing
+./build_privilege_os.sh --qemu-only
+
+# Custom kernel and BusyBox versions
+./build_privilege_os.sh --kernel 6.15.3 --busybox 1.36.1
+
+# Use custom configurations
+./build_privilege_os.sh --kernel-config my_kernel.config --busybox-config my_busybox.config
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 ```
 
 #### 4. Build Options Reference
@@ -472,7 +569,11 @@ chmod +x scripts/myscript.sh
 
 #### 3. Rebuild
 ```bash
+<<<<<<< HEAD
 ./build.sh
+=======
+./build_privilege_os.sh
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 ```
 
 #### 4. Use in PrivilegeOS
@@ -486,7 +587,11 @@ Hello from custom script!
 
 ```
 privilegeos/
+<<<<<<< HEAD
 ├── build.sh      # Main build script
+=======
+├── build_privilege_os.sh      # Main build script
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 ├── scripts/                   # Custom scripts directory
 │   ├── getadmin.sh           # Windows admin bypass tool
 │   ├── putadmin.sh           # Windows restoration tool
@@ -816,10 +921,17 @@ git checkout -b develop
 #### Testing Changes
 ```bash
 # Test build process
+<<<<<<< HEAD
 ./build.sh --qemu-only
 
 # Test specific components
 ./build.sh --clean --skip-qemu
+=======
+./build_privilege_os.sh --qemu-only
+
+# Test specific components
+./build_privilege_os.sh --clean --skip-qemu
+>>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 
 # Test in virtual machine
 qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.fd -drive file=build/PrivilegeOS.img,format=raw

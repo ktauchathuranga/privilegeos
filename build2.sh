@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Script: build.sh
-# Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
-# Version: 3.4 (Replaced NTFS-3G with kernel NTFS3 driver)
+# Description: Builds PrivilegeOS with separate initramfs for faster debugging
+# Version: 3.4 (Separated initramfs from kernel)
 # Date: 2025-07-06
 
 # Exit on errors
@@ -12,6 +12,7 @@ set -e
 OS_NAME="PrivilegeOS"
 KERNEL_VER="6.15.3"
 BUSYBOX_VER="1.36.1"
+NTFS3G_VER="2022.10.3"
 THREADS=$(nproc)
 MEMORY="2G"
 IMAGE_SIZE="512"  # In MB
@@ -20,11 +21,13 @@ IMAGE_SIZE="512"  # In MB
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 KERNEL_SRC_DIR="${SCRIPT_DIR}/linux-${KERNEL_VER}"
 BUSYBOX_SRC_DIR="${SCRIPT_DIR}/busybox-${BUSYBOX_VER}"
+NTFS3G_SRC_DIR="${SCRIPT_DIR}/ntfs-3g-${NTFS3G_VER}"
 CUSTOM_SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 
 # Build directory
 BUILD_DIR="${SCRIPT_DIR}/build"
 INITRAMFS_DIR="${BUILD_DIR}/initramfs"
+INITRAMFS_FILE="${BUILD_DIR}/initramfs.cpio.gz"
 DISK_IMG="${BUILD_DIR}/${OS_NAME}.img"
 CONFIG_DIR="${SCRIPT_DIR}/configs"
 LOG_DIR="${BUILD_DIR}/logs"
@@ -100,21 +103,26 @@ Options:
   -n, --name NAME           Set OS name (default: PrivilegeOS)
   -k, --kernel VER          Set kernel version (default: ${KERNEL_VER})
   -b, --busybox VER         Set BusyBox version (default: ${BUSYBOX_VER})
+  --ntfs3g VER             Set NTFS-3G version (default: ${NTFS3G_VER})
   -j, --threads N           Set number of threads for compilation (default: $(nproc))
   -m, --memory SIZE         Set QEMU memory size (default: ${MEMORY})
   -s, --size SIZE           Set disk image size in MB (default: ${IMAGE_SIZE})
   -c, --clean               Clean build directory before starting
   -q, --qemu-only           Only build and test in QEMU (no USB writing)
   --skip-qemu               Skip QEMU testing
+  --skip-ntfs3g             Skip NTFS-3G build
+  --skip-kernel             Skip kernel build (use existing kernel)
+  --initramfs-only          Build only initramfs (for debugging)
+  --update-initramfs        Update initramfs on existing disk image
   --kernel-config FILE      Use custom kernel config file
   --busybox-config FILE     Use custom BusyBox config file
 
 Examples:
   $0 --clean --name MyOS --kernel 6.15.3 --size 1024
   $0 --qemu-only --threads 4
-  $0 --busybox-config my_busybox.config --kernel-config my_kernel.config
-
-Note: This version uses the kernel NTFS3 driver for native NTFS support.
+  $0 --initramfs-only       # Fast rebuild of just initramfs
+  $0 --update-initramfs     # Update initramfs on existing image
+  $0 --skip-kernel          # Skip kernel compilation
 EOF
     exit 0
 }
@@ -137,6 +145,11 @@ parse_arguments() {
             -b|--busybox)
                 BUSYBOX_VER="$2"
                 BUSYBOX_SRC_DIR="${SCRIPT_DIR}/busybox-${BUSYBOX_VER}"
+                shift 2
+                ;;
+            --ntfs3g)
+                NTFS3G_VER="$2"
+                NTFS3G_SRC_DIR="${SCRIPT_DIR}/ntfs-3g-${NTFS3G_VER}"
                 shift 2
                 ;;
             -j|--threads)
@@ -163,6 +176,22 @@ parse_arguments() {
                 SKIP_QEMU=1
                 shift
                 ;;
+            --skip-ntfs3g)
+                SKIP_NTFS3G=1
+                shift
+                ;;
+            --skip-kernel)
+                SKIP_KERNEL=1
+                shift
+                ;;
+            --initramfs-only)
+                INITRAMFS_ONLY=1
+                shift
+                ;;
+            --update-initramfs)
+                UPDATE_INITRAMFS=1
+                shift
+                ;;
             --kernel-config)
                 CUSTOM_KERNEL_CONFIG="$2"
                 shift 2
@@ -181,7 +210,7 @@ parse_arguments() {
 # --- Main Build Steps ---
 check_dependencies() {
     log "Checking for dependencies..."
-    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar")
+    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar" "pkg-config" "autoconf" "automake" "libtool" "cpio" "gzip")
     local missing_deps=()
 
     for dep in "${deps[@]}"; do
@@ -197,6 +226,13 @@ check_dependencies() {
 
     if [ ! -f /usr/share/ovmf/x64/OVMF.fd ] && [ ! -f /usr/share/ovmf/x64/OVMF.4m.fd ]; then
         missing_deps+=("ovmf")
+    fi
+
+    # Check for FUSE development headers (needed for NTFS-3G)
+    if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+        if ! pkg-config --exists fuse || ! find /usr/include -name "fuse.h" 2>/dev/null | grep -q .; then
+            missing_deps+=("libfuse-dev/fuse-devel")
+        fi
     fi
 
     if [ ${#missing_deps[@]} -ne 0 ]; then
@@ -243,6 +279,17 @@ download_sources() {
         rm "${BUILD_DIR}/busybox-${BUSYBOX_VER}.tar.bz2"
     else
         log "BusyBox source already present."
+    fi
+    
+    # Download NTFS-3G if needed and not skipped
+    if [ "${SKIP_NTFS3G:-0}" -ne 1 ] && [ ! -d "$NTFS3G_SRC_DIR" ]; then
+        log "Downloading NTFS-3G ${NTFS3G_VER}..."
+        # Updated URL to match the GitHub archive format
+        wget -c "https://github.com/tuxera/ntfs-3g/archive/${NTFS3G_VER}/ntfs-3g-${NTFS3G_VER}.tar.gz" -P "${BUILD_DIR}"
+        tar -xf "${BUILD_DIR}/ntfs-3g-${NTFS3G_VER}.tar.gz" -C "${SCRIPT_DIR}"
+        rm "${BUILD_DIR}/ntfs-3g-${NTFS3G_VER}.tar.gz"
+    elif [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+        log "NTFS-3G source already present."
     fi
 }
 
@@ -319,6 +366,63 @@ build_busybox() {
     log "BusyBox build complete."
 }
 
+build_ntfs3g() {
+    if [ "${SKIP_NTFS3G:-0}" -eq 1 ]; then
+        log "Skipping NTFS-3G build as requested."
+        return 0
+    fi
+
+    log "Building NTFS-3G ${NTFS3G_VER}..."
+    cd "$NTFS3G_SRC_DIR"
+    
+    # Clean any previous build
+    make distclean > /dev/null 2>&1 || true
+    
+    # Run autoreconf to generate configure script if needed
+    if [ ! -f configure ]; then
+        log "Generating configure script..."
+        autoreconf -fiv > "${LOG_DIR}/ntfs3g_autoreconf.log" 2>&1 || error "NTFS-3G autoreconf failed. Check ${LOG_DIR}/ntfs3g_autoreconf.log for details."
+    fi
+    
+    # Configure NTFS-3G
+    log "Configuring NTFS-3G..."
+    ./configure \
+        --prefix="${INITRAMFS_DIR}/usr" \
+        --exec-prefix="${INITRAMFS_DIR}/usr" \
+        --enable-static \
+        --disable-shared \
+        --disable-ldconfig \
+        --disable-crypto \
+        --enable-extras \
+        --with-fuse=internal \
+        CFLAGS="-static -O2" \
+        LDFLAGS="-static" > "${LOG_DIR}/ntfs3g_configure.log" 2>&1 || error "NTFS-3G configure failed. Check ${LOG_DIR}/ntfs3g_configure.log for details."
+    
+    # Build NTFS-3G
+    log "Compiling NTFS-3G..."
+    make -j"${THREADS}" > "${LOG_DIR}/ntfs3g_build.log" 2>&1 &
+    build_pid=$!
+    show_progress "$build_pid"
+    wait "$build_pid" || error "NTFS-3G build failed. Check ${LOG_DIR}/ntfs3g_build.log for details."
+    
+    # Install NTFS-3G
+    log "Installing NTFS-3G to initramfs..."
+    make install >> "${LOG_DIR}/ntfs3g_build.log" 2>&1 || error "NTFS-3G install failed. Check ${LOG_DIR}/ntfs3g_build.log for details."
+    
+    # Create symlinks for common commands
+    cd "${INITRAMFS_DIR}/usr/bin"
+    ln -sf ntfs-3g mount.ntfs 2>/dev/null || true
+    ln -sf ntfs-3g mount.ntfs-3g 2>/dev/null || true
+    
+    # Strip binaries to reduce size
+    strip "${INITRAMFS_DIR}/usr/bin/ntfs-3g" 2>/dev/null || true
+    strip "${INITRAMFS_DIR}/usr/bin/ntfsfix" 2>/dev/null || true
+    strip "${INITRAMFS_DIR}/usr/bin/ntfsinfo" 2>/dev/null || true
+    
+    cd "$SCRIPT_DIR"
+    log "NTFS-3G build complete."
+}
+
 create_initramfs_content() {
     log "Creating initramfs content..."
     
@@ -379,9 +483,9 @@ modprobe amdgpu 2>/dev/null || echo "AMD graphics not available"
 modprobe nouveau 2>/dev/null || echo "NVIDIA graphics not available"
 modprobe virtio_gpu 2>/dev/null || echo "Virtio GPU not available"
 
-# Load NTFS3 module for native NTFS support
-echo "Loading NTFS3 module for native NTFS support..."
-modprobe ntfs3 2>/dev/null || echo "NTFS3 module not available"
+# Load FUSE module for NTFS-3G
+echo "Loading FUSE module for NTFS support..."
+modprobe fuse 2>/dev/null || echo "FUSE module not available"
 
 # Initialize the framebuffer
 for i in /sys/class/graphics/fb*; do
@@ -463,16 +567,6 @@ echo "root:x:0:" > /etc/group
 chmod 644 /etc/passwd /etc/group
 
 echo ""
-<<<<<<< HEAD
-echo -e "\e[1;34m  ____       _       _ _                  ___  ____  \e[0m"
-echo -e "\e[1;34m |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___| \e[0m"
-echo -e "\e[1;34m | |_) | '__| \ \ / / | |/ _ \/ _\ |/ _ \ | | \___ \ \e[0m"
-echo -e "\e[1;34m |  __/| |  | |\ V /| | |  __/ (_| |  __/ |_| |___) |\e[0m"
-echo -e "\e[1;34m |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/ \e[0m"
-echo -e "\e[1;34m                              |___/                 \e[0m"
-echo ""
-
-=======
 echo -e "\e[1;34m  ____       _ _ _         _   ___  ____  \e[0m"
 echo -e "\e[1;34m |  _ \\ _ __(_) | |  _ __ (_) / _ \\/ ___| \e[0m"
 echo -e "\e[1;34m | |_) | '__| | | | | '_ \\| |/ / | \\___ \\ \e[0m"
@@ -480,7 +574,6 @@ echo -e "\e[1;34m |  __/| |  | | | |_| |_) | / /| |___) |\e[0m"
 echo -e "\e[1;34m |_|   |_|  |_|_|\\___/ .__/|_\\/  \\____/ \e[0m"
 echo -e "\e[1;34m                     |_|                \e[0m"
 echo ""
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
 echo -e "\e[1mWelcome to ${OS_NAME}!\e[0m"
 echo -e "\e[1mBuild date: $(date)\e[0m"
 echo -e "\e[1mYou are running as: \e[32mROOT\e[0m"
@@ -497,11 +590,11 @@ echo "===================="
 cat /proc/cpuinfo | grep "model name" | head -1
 free -m | awk 'NR==2{printf "Memory: %s/%s MB\n", \$3, \$2}'
 
-# Check for NTFS3 support
-if grep -q ntfs3 /proc/filesystems; then
-    echo -e "\e[1;32mNTFS3 support: AVAILABLE (native kernel driver)\e[0m"
+# Check for NTFS-3G
+if command -v ntfs-3g >/dev/null 2>&1; then
+    echo -e "\e[1;32mNTFS-3G support: AVAILABLE\e[0m"
 else
-    echo -e "\e[1;31mNTFS3 support: NOT AVAILABLE\e[0m"
+    echo -e "\e[1;31mNTFS-3G support: NOT AVAILABLE\e[0m"
 fi
 
 CUSTOM_CMDS=\$(ls -1 /usr/local/bin/ 2>/dev/null)
@@ -514,7 +607,7 @@ fi
 
 echo ""
 echo -e "\e[1;32mType 'poweroff' or 'reboot' to exit.\e[0m"
-echo -e "\e[1;32mTo mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt\e[0m"
+echo -e "\e[1;32mTo mount NTFS drives: mount -t ntfs-3g /dev/sdXN /mnt\e[0m"
 echo ""
 
 touch /tmp/rcS_completed
@@ -552,7 +645,7 @@ export LOGNAME=root
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
 export PS1='\w # '
 alias ll='ls -la'
-alias mount-ntfs='mount -t ntfs3'
+alias mount-ntfs='mount -t ntfs-3g'
 EOF
     
     log "initramfs content created."
@@ -568,50 +661,26 @@ install_custom_scripts() {
         for script in "${CUSTOM_SCRIPTS_DIR}"/*; do
             if [ -f "$script" ]; then
                 SCRIPT_NAME=$(basename "$script")
-<<<<<<< HEAD
-                # Remove .sh extension if present for cleaner command names
-                CLEAN_NAME="${SCRIPT_NAME%.sh}"
-                
-                log "Installing custom script: $SCRIPT_NAME as '$CLEAN_NAME'"
-                
-                # Install to /usr/local/bin with original name
-                cp "$script" "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
-                chmod +x "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
-                
-                # Create symlink in /bin for easy access (without .sh extension)
-                ln -sf "/usr/local/bin/$SCRIPT_NAME" "${INITRAMFS_DIR}/bin/$CLEAN_NAME"
-                
-                # Also create symlink with original name if it had .sh extension
-                if [ "$SCRIPT_NAME" != "$CLEAN_NAME" ]; then
-                    ln -sf "/usr/local/bin/$SCRIPT_NAME" "${INITRAMFS_DIR}/bin/$SCRIPT_NAME"
-                fi
-                
-=======
                 log "Installing custom script: $SCRIPT_NAME"
                 cp "$script" "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
                 chmod +x "${INITRAMFS_DIR}/usr/local/bin/$SCRIPT_NAME"
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
                 SCRIPT_COUNT=$((SCRIPT_COUNT + 1))
             fi
         done
         
         if [ "$SCRIPT_COUNT" -gt 0 ]; then
-<<<<<<< HEAD
-            log "Installed $SCRIPT_COUNT custom scripts with symlinks in /bin"
-=======
             log "Installed $SCRIPT_COUNT custom scripts."
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
         else
             warning "No custom scripts found in ${CUSTOM_SCRIPTS_DIR}"
             warning "You can add scripts to ${CUSTOM_SCRIPTS_DIR} and rebuild to include them."
             
-            # Create default getdrives script with NTFS3 support
+            # Create default getdrives script with NTFS support
             log "Creating default getdrives.sh script..."
             cat <<'EOF' > "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
 #!/bin/sh
 #
 # getdrives.sh - List all drives and partitions in a BusyBox environment
-# For use with PrivilegeOS - Enhanced with kernel NTFS3 support
+# For use with PrivilegeOS - Enhanced with NTFS-3G support
 
 echo "==============================================="
 echo "            STORAGE DEVICES LIST"
@@ -645,41 +714,26 @@ for dev in /dev/[hsv]d[a-z]*[0-9] /dev/nvme*n*p* /dev/mmcblk*p*; do
     fi
 done
 
-echo "\n\033[1;32mSupported Filesystems:\033[0m"
-echo "-----------------------------"
-cat /proc/filesystems | grep -E "(ext|ntfs|vfat|xfs|btrfs)" || echo "No filesystems information available"
-
-if grep -q ntfs3 /proc/filesystems; then
-    echo "\n\033[1;32mNTFS3 Commands (Native Kernel Driver):\033[0m"
+if command -v ntfs-3g >/dev/null 2>&1; then
+    echo "\n\033[1;32mNTFS-3G Commands:\033[0m"
     echo "-----------------------------"
-    echo "Mount NTFS partition: mount -t ntfs3 /dev/sdXN /mnt"
-    echo "Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt"
-    echo "Mount with specific options: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt"
-    echo "Check filesystem: fsck.ntfs /dev/sdXN (if available)"
+    echo "Mount NTFS partition: mount -t ntfs-3g /dev/sdXN /mnt"
+    echo "Mount NTFS read-only: mount -t ntfs-3g -o ro /dev/sdXN /mnt"
+    echo "Check NTFS: ntfsfix /dev/sdXN"
+    echo "Get NTFS info: ntfsinfo /dev/sdXN"
 else
-    echo "\n\033[1;31mNTFS3 support: NOT AVAILABLE\033[0m"
+    echo "\n\033[1;31mNTFS-3G: NOT AVAILABLE\033[0m"
 fi
 
 echo "\n\033[1;32mTo examine a partition:\033[0m"
-echo "  mount -t ntfs3 /dev/XXX /mnt  (for NTFS)"
-echo "  mount /dev/XXX /mnt           (for other filesystems)"
+echo "  mount /dev/XXX /mnt"
 echo "  cd /mnt"
 echo "  ls -la"
 EOF
             chmod +x "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
-<<<<<<< HEAD
-            cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
-            chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
-            
-            # Create symlinks for getdrives
-            ln -sf "/usr/local/bin/getdrives.sh" "${INITRAMFS_DIR}/bin/getdrives"
-            
-            log "Created and installed default getdrives script with symlinks."
-=======
             cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives"
             chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives"
             log "Created and installed default getdrives script."
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
             SCRIPT_COUNT=1
         fi
     else
@@ -687,13 +741,13 @@ EOF
         mkdir -p "${CUSTOM_SCRIPTS_DIR}"
         warning "No custom scripts directory found. Created one at ${CUSTOM_SCRIPTS_DIR}"
 
-        # Create default getdrives script with NTFS3 support
+        # Create default getdrives script with NTFS support
         log "Creating default getdrives.sh script..."
         cat <<'EOF' > "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
 #!/bin/sh
 #
 # getdrives.sh - List all drives and partitions in a BusyBox environment
-# For use with PrivilegeOS - Enhanced with kernel NTFS3 support
+# For use with PrivilegeOS - Enhanced with NTFS-3G support
 
 echo "==============================================="
 echo "            STORAGE DEVICES LIST"
@@ -727,38 +781,23 @@ for dev in /dev/[hsv]d[a-z]*[0-9] /dev/nvme*n*p* /dev/mmcblk*p*; do
     fi
 done
 
-echo "\n\033[1;32mSupported Filesystems:\033[0m"
-echo "-----------------------------"
-cat /proc/filesystems | grep -E "(ext|ntfs|vfat|xfs|btrfs)" || echo "No filesystems information available"
-
-if grep -q ntfs3 /proc/filesystems; then
-    echo "\n\033[1;32mNTFS3 Commands (Native Kernel Driver):\033[0m"
+if command -v ntfs-3g >/dev/null 2>&1; then
+    echo "\n\033[1;32mNTFS-3G Commands:\033[0m"
     echo "-----------------------------"
-    echo "Mount NTFS partition: mount -t ntfs3 /dev/sdXN /mnt"
-    echo "Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt"
-    echo "Mount with specific options: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt"
-    echo "Check filesystem: fsck.ntfs /dev/sdXN (if available)"
+    echo "Mount NTFS partition: mount -t ntfs-3g /dev/sdXN /mnt"
+    echo "Mount NTFS read-only: mount -t ntfs-3g -o ro /dev/sdXN /mnt"
+    echo "Check NTFS: ntfsfix /dev/sdXN"
+    echo "Get NTFS info: ntfsinfo /dev/sdXN"
 else
-    echo "\n\033[1;31mNTFS3 support: NOT AVAILABLE\033[0m"
+    echo "\n\033[1;31mNTFS-3G: NOT AVAILABLE\033[0m"
 fi
 
 echo "\n\033[1;32mTo examine a partition:\033[0m"
-echo "  mount -t ntfs3 /dev/XXX /mnt  (for NTFS)"
-echo "  mount /dev/XXX /mnt           (for other filesystems)"
+echo "  mount /dev/XXX /mnt"
 echo "  cd /mnt"
 echo "  ls -la"
 EOF
         chmod +x "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
-<<<<<<< HEAD
-        cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
-        chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives.sh"
-        
-        # Create symlinks for getdrives
-        ln -sf "/usr/local/bin/getdrives.sh" "${INITRAMFS_DIR}/bin/getdrives"
-        
-        log "Created and installed default getdrives script with symlinks."
-    fi
-=======
         cp "${CUSTOM_SCRIPTS_DIR}/getdrives.sh" "${INITRAMFS_DIR}/usr/local/bin/getdrives"
         chmod +x "${INITRAMFS_DIR}/usr/local/bin/getdrives"
         log "Created and installed default getdrives script."
@@ -767,7 +806,24 @@ EOF
     # Create symlinks for convenience
     ln -sf "${INITRAMFS_DIR}/usr/local/bin/getdrives" "${INITRAMFS_DIR}/usr/local/bin/lsblk" 2>/dev/null || true
     ln -sf "${INITRAMFS_DIR}/usr/local/bin/getdrives" "${INITRAMFS_DIR}/usr/local/bin/disks" 2>/dev/null || true
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
+}
+
+create_initramfs_archive() {
+    log "Creating initramfs archive..."
+    
+    cd "${INITRAMFS_DIR}"
+    
+    # Create the cpio archive
+    find . -print0 | cpio --null -ov --format=newc 2>/dev/null | gzip -9 > "${INITRAMFS_FILE}"
+    
+    if [ ! -f "${INITRAMFS_FILE}" ]; then
+        error "Failed to create initramfs archive"
+    fi
+    
+    local size=$(du -h "${INITRAMFS_FILE}" | cut -f1)
+    log "Created initramfs archive: ${INITRAMFS_FILE} (${size})"
+    
+    cd "$SCRIPT_DIR"
 }
 
 build_kernel() {
@@ -815,7 +871,7 @@ build_kernel() {
         ./scripts/config --enable CONFIG_DRM_FBDEV_EMULATION
         ./scripts/config --enable CONFIG_BACKLIGHT_CLASS_DEVICE
         
-        # Enhanced filesystem support with NTFS3
+        # Enhanced filesystem support including NTFS
         ./scripts/config --enable CONFIG_VFAT_FS
         ./scripts/config --enable CONFIG_MSDOS_FS
         ./scripts/config --enable CONFIG_FAT_DEFAULT_UTF8
@@ -826,18 +882,16 @@ build_kernel() {
         ./scripts/config --enable CONFIG_XFS_FS
         ./scripts/config --enable CONFIG_BTRFS_FS
         
-        # Enable NTFS3 native kernel driver
-        ./scripts/config --enable CONFIG_NTFS3_FS
-        ./scripts/config --enable CONFIG_NTFS3_64BIT_CLUSTER
-        ./scripts/config --enable CONFIG_NTFS3_LZX_XPRESS
-        ./scripts/config --enable CONFIG_NTFS3_FS_POSIX_ACL
-        
-        # Disable old NTFS driver to avoid conflicts
+        # Disable kernel NTFS drivers to avoid conflicts with NTFS-3G
         ./scripts/config --disable CONFIG_NTFS_FS
+        ./scripts/config --disable CONFIG_NTFS3_FS
+        ./scripts/config --disable CONFIG_NTFS3_64BIT_CLUSTER
+        ./scripts/config --disable CONFIG_NTFS3_LZX_XPRESS
+        ./scripts/config --disable CONFIG_NTFS3_FS_POSIX_ACL
         
-        # Remove FUSE (no longer needed for NTFS support)
-        ./scripts/config --disable CONFIG_FUSE_FS
-        ./scripts/config --disable CONFIG_CUSE
+        # FUSE support for NTFS-3G
+        ./scripts/config --enable CONFIG_FUSE_FS
+        ./scripts/config --enable CONFIG_CUSE
         
         ./scripts/config --enable CONFIG_SND
         ./scripts/config --enable CONFIG_SND_HDA_INTEL
@@ -891,8 +945,9 @@ build_kernel() {
         ./scripts/config --enable CONFIG_THINKPAD_ACPI
         ./scripts/config --enable CONFIG_DELL_LAPTOP
         
-        ./scripts/config --enable CONFIG_INITRAMFS_SOURCE
-        ./scripts/config --set-str CONFIG_INITRAMFS_SOURCE "${INITRAMFS_DIR}"
+        # IMPORTANT: DO NOT embed initramfs in kernel
+        ./scripts/config --disable CONFIG_INITRAMFS_SOURCE
+        ./scripts/config --set-str CONFIG_INITRAMFS_SOURCE ""
         
         ./scripts/config --enable CONFIG_CMDLINE_BOOL
         ./scripts/config --set-str CONFIG_CMDLINE "console=tty0 console=ttyS0"
@@ -902,6 +957,10 @@ build_kernel() {
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
     fi
+
+    # Ensure initramfs is not embedded in kernel
+    ./scripts/config --disable CONFIG_INITRAMFS_SOURCE
+    ./scripts/config --set-str CONFIG_INITRAMFS_SOURCE ""
 
     log "Updating kernel config..."
     make olddefconfig > "${LOG_DIR}/kernel_olddefconfig.log" 2>&1
@@ -941,33 +1000,67 @@ create_uefi_disk_image() {
     mkdir -p "${BUILD_DIR}/mnt"
     sudo mount "${LOOP_DEV}p1" "${BUILD_DIR}/mnt"
     
-    log "Copying kernel to EFI partition..."
+    log "Copying kernel and initramfs to EFI partition..."
     sudo mkdir -p "${BUILD_DIR}/mnt/EFI/BOOT"
+    sudo cp "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" "${BUILD_DIR}/mnt/EFI/BOOT/vmlinuz"
+    sudo cp "${INITRAMFS_FILE}" "${BUILD_DIR}/mnt/EFI/BOOT/initramfs.cpio.gz"
+    
+    log "Creating EFI boot executable..."
+    cat > "${BUILD_DIR}/efi_boot.sh" << 'EOF'
+#!/bin/bash
+# Create EFI boot executable
+cat > /tmp/boot_script.txt << 'EFIEOF'
+@echo -off
+echo Loading PrivilegeOS...
+vmlinuz initrd=initramfs.cpio.gz console=tty0 console=ttyS0
+EFIEOF
+
+# Convert to proper EFI executable format
+# This is a simplified approach - in production you'd use proper EFI tools
+cp /tmp/boot_script.txt BOOTX64.EFI
+EFIEOF
+    
+    # Create a simple boot script for EFI
+    cat > "${BUILD_DIR}/mnt/EFI/BOOT/boot.nsh" << EOF
+@echo -off
+echo Loading ${OS_NAME}...
+vmlinuz initrd=initramfs.cpio.gz console=tty0 console=ttyS0
+EOF
+    
+    # Create a proper EFI boot entry (this is a simplified approach)
+    # In a real implementation, you'd use efibootmgr or similar tools
     sudo cp "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" "${BUILD_DIR}/mnt/EFI/BOOT/BOOTX64.EFI"
     
     log "Creating UEFI startup script..."
     cat <<EOF | sudo tee "${BUILD_DIR}/mnt/startup.nsh" > /dev/null
 @echo -off
 echo Loading ${OS_NAME}...
-\EFI\BOOT\BOOTX64.EFI
+fs0:
+cd \EFI\BOOT
+vmlinuz initrd=initramfs.cpio.gz console=tty0 console=ttyS0
 EOF
     
     cat <<EOF | sudo tee "${BUILD_DIR}/mnt/README.txt" > /dev/null
-${OS_NAME} - A minimal Linux distribution with native NTFS3 support
+${OS_NAME} - A minimal Linux distribution with NTFS-3G support
 Built on: $(date)
 Kernel version: ${KERNEL_VER}
 BusyBox version: ${BUSYBOX_VER}
-NTFS support: Native kernel NTFS3 driver
+NTFS-3G version: ${NTFS3G_VER}
 
-This is a bootable UEFI image. To boot:
+This is a bootable UEFI image with separate initramfs. To boot:
 1. Make sure UEFI boot is enabled
 2. Boot from this device
 3. The system should automatically start as root
 
-NTFS Support (Native Kernel Driver):
-- Mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt
-- Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt
-- Mount with specific permissions: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt
+Files:
+- vmlinuz: Linux kernel
+- initramfs.cpio.gz: Initial RAM filesystem
+- BOOTX64.EFI: UEFI boot executable
+
+NTFS Support:
+- Mount NTFS drives: mount -t ntfs-3g /dev/sdXN /mnt
+- Check NTFS drives: ntfsfix /dev/sdXN
+- Get NTFS info: ntfsinfo /dev/sdXN
 
 For technical support or issues:
 - Check logs in /var/log/
@@ -980,6 +1073,38 @@ EOF
     LOOP_DEV=""
     
     log "UEFI disk image created at ${DISK_IMG}"
+}
+
+update_initramfs_on_image() {
+    log "Updating initramfs on existing disk image..."
+    
+    if [ ! -f "${DISK_IMG}" ]; then
+        error "Disk image ${DISK_IMG} does not exist. Build the full image first."
+    fi
+    
+    if [ ! -f "${INITRAMFS_FILE}" ]; then
+        error "Initramfs file ${INITRAMFS_FILE} does not exist. Build initramfs first."
+    fi
+    
+    log "Setting up loopback device..."
+    LOOP_DEV=$(sudo losetup -f --show -P "${DISK_IMG}")
+    if [ -z "$LOOP_DEV" ]; then
+        error "Failed to set up loopback device."
+    fi
+    
+    log "Mounting EFI partition..."
+    mkdir -p "${BUILD_DIR}/mnt"
+    sudo mount "${LOOP_DEV}p1" "${BUILD_DIR}/mnt"
+    
+    log "Updating initramfs..."
+    sudo cp "${INITRAMFS_FILE}" "${BUILD_DIR}/mnt/EFI/BOOT/initramfs.cpio.gz"
+    
+    log "Unmounting EFI partition..."
+    sudo umount "${BUILD_DIR}/mnt"
+    sudo losetup -d "${LOOP_DEV}"
+    LOOP_DEV=""
+    
+    log "Initramfs updated on disk image."
 }
 
 write_to_usb() {
@@ -1093,25 +1218,86 @@ main() {
     CLEAN_BUILD=${CLEAN_BUILD:-0}
     QEMU_ONLY=${QEMU_ONLY:-0}
     SKIP_QEMU=${SKIP_QEMU:-0}
+    SKIP_NTFS3G=${SKIP_NTFS3G:-0}
+    SKIP_KERNEL=${SKIP_KERNEL:-0}
+    INITRAMFS_ONLY=${INITRAMFS_ONLY:-0}
+    UPDATE_INITRAMFS=${UPDATE_INITRAMFS:-0}
     
     echo ""
-    echo -e "${BLUE}${BOLD}Building ${OS_NAME}${NC}"
+    echo -e "${BLUE}${BOLD}Building ${OS_NAME} with separate initramfs${NC}"
     echo -e "${BLUE}Kernel version: ${KERNEL_VER}${NC}"
     echo -e "${BLUE}BusyBox version: ${BUSYBOX_VER}${NC}"
-    echo -e "${BLUE}NTFS support: Native kernel NTFS3 driver${NC}"
+    if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+        echo -e "${BLUE}NTFS-3G version: ${NTFS3G_VER}${NC}"
+    else
+        echo -e "${YELLOW}NTFS-3G: SKIPPED${NC}"
+    fi
     echo -e "${BLUE}Using ${THREADS} threads for compilation${NC}"
     echo -e "${BLUE}Disk image size: ${IMAGE_SIZE}MB${NC}"
     echo -e "${BLUE}Custom scripts directory: ${CUSTOM_SCRIPTS_DIR}${NC}"
     echo ""
 
-    check_dependencies
+    # Special modes for faster debugging
+    if [ "${INITRAMFS_ONLY:-0}" -eq 1 ]; then
+        log "Building initramfs only (fast debugging mode)..."
+        setup_workspace
+        if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+            if [ ! -d "$NTFS3G_SRC_DIR" ]; then
+                download_sources
+            fi
+            build_ntfs3g
+        fi
+        if [ ! -d "$BUSYBOX_SRC_DIR" ]; then
+            download_sources
+        fi
+        build_busybox
+        create_initramfs_content
+        install_custom_scripts
+        create_initramfs_archive
+        log "Initramfs-only build complete. File: ${INITRAMFS_FILE}"
+        return 0
+    fi
+    
+    if [ "${UPDATE_INITRAMFS:-0}" -eq 1 ]; then
+        log "Updating initramfs on existing image..."
+        setup_workspace
+        if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+            if [ ! -d "$NTFS3G_SRC_DIR" ]; then
+                download_sources
+            fi
+            build_ntfs3g
+        fi
+        if [ ! -d "$BUSYBOX_SRC_DIR" ]; then
+            download_sources
+        fi
+        build_busybox
+        create_initramfs_content
+        install_custom_scripts
+        create_initramfs_archive
+        update_initramfs_on_image
+        log "Initramfs update complete."
+        return 0
+    fi
+
+    #check_dependencies
 
     setup_workspace
     download_sources
     build_busybox
+    build_ntfs3g
     create_initramfs_content
     install_custom_scripts
-    build_kernel
+    create_initramfs_archive
+    
+    if [ "${SKIP_KERNEL:-0}" -ne 1 ]; then
+        build_kernel
+    else
+        log "Skipping kernel build as requested."
+        if [ ! -f "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" ]; then
+            error "No kernel found. Build kernel first or remove --skip-kernel option."
+        fi
+    fi
+    
     create_uefi_disk_image
     
     if [ "${SKIP_QEMU:-0}" -ne 1 ]; then
@@ -1135,40 +1321,39 @@ main() {
     echo -e "${GREEN}- OS Name: ${OS_NAME}${NC}"
     echo -e "${GREEN}- Kernel: ${KERNEL_VER}${NC}"
     echo -e "${GREEN}- BusyBox: ${BUSYBOX_VER}${NC}"
-    echo -e "${GREEN}- NTFS support: Native kernel NTFS3 driver${NC}"
+    if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+        echo -e "${GREEN}- NTFS-3G: ${NTFS3G_VER}${NC}"
+    else
+        echo -e "${YELLOW}- NTFS-3G: SKIPPED${NC}"
+    fi
     echo -e "${GREEN}- Image: ${DISK_IMG} ($(du -h "${DISK_IMG}" | cut -f1))${NC}"
+    echo -e "${GREEN}- Initramfs: ${INITRAMFS_FILE} ($(du -h "${INITRAMFS_FILE}" | cut -f1))${NC}"
     echo -e "${GREEN}- Logs: ${LOG_DIR}${NC}"
     
     SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f 2>/dev/null | wc -l)
     if [ "$SCRIPT_COUNT" -gt 0 ]; then
         echo -e "${GREEN}- Installed custom scripts: ${SCRIPT_COUNT}${NC}"
-<<<<<<< HEAD
-        echo -e "${GREEN}  Available commands (in /bin):${NC}"
-        # Show the symlinked commands
-        for script in "${INITRAMFS_DIR}"/usr/local/bin/*; do
-            if [ -f "$script" ]; then
-                SCRIPT_NAME=$(basename "$script")
-                CLEAN_NAME="${SCRIPT_NAME%.sh}"
-                echo -e "${GREEN}    - $CLEAN_NAME${NC}"
-                if [ "$SCRIPT_NAME" != "$CLEAN_NAME" ]; then
-                    echo -e "${GREEN}    - $SCRIPT_NAME${NC}"
-                fi
-            fi
-        done
-=======
         echo -e "${GREEN}  $(ls -1 "${INITRAMFS_DIR}/usr/local/bin" 2>/dev/null | tr '\n' ' ')${NC}"
->>>>>>> d220073f5cfb99cf9322121934ccd31402ad2e9d
     else
         echo -e "${YELLOW}- No custom scripts installed${NC}"
         echo -e "${YELLOW}  Add scripts to ${CUSTOM_SCRIPTS_DIR} before building to include them${NC}"
     fi
     
+    if [ "${SKIP_NTFS3G:-0}" -ne 1 ]; then
+        echo ""
+        echo -e "${GREEN}${BOLD}NTFS-3G Support Added:${NC}"
+        echo -e "${GREEN}- Mount NTFS drives: mount -t ntfs-3g /dev/sdXN /mnt${NC}"
+        echo -e "${GREEN}- Mount NTFS read-only: mount -t ntfs-3g -o ro /dev/sdXN /mnt${NC}"
+        echo -e "${GREEN}- Check NTFS drives: ntfsfix /dev/sdXN${NC}"
+        echo -e "${GREEN}- Get NTFS info: ntfsinfo /dev/sdXN${NC}"
+        echo -e "${GREEN}- Alias: mount-ntfs command available${NC}"
+    fi
+    
     echo ""
-    echo -e "${GREEN}${BOLD}NTFS3 Support (Native Kernel Driver):${NC}"
-    echo -e "${GREEN}- Mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt${NC}"
-    echo -e "${GREEN}- Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt${NC}"
-    echo -e "${GREEN}- Mount with specific permissions: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt${NC}"
-    echo -e "${GREEN}- Alias: mount-ntfs command available${NC}"
+    echo -e "${GREEN}${BOLD}Fast Debugging Commands:${NC}"
+    echo -e "${GREEN}- Rebuild initramfs only: ./build.sh --initramfs-only${NC}"
+    echo -e "${GREEN}- Update initramfs on image: ./build.sh --update-initramfs${NC}"
+    echo -e "${GREEN}- Skip kernel build: ./build.sh --skip-kernel${NC}"
     echo ""
 }
 
