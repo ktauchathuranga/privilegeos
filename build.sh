@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Script: build.sh
-# Description: Builds PrivilegeOS with custom script integration and supports optional BusyBox/Kernel configs
-# Version: 3.2
-# Date: 2025-07-05
+# Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
+# Version: 3.4 (Replaced NTFS-3G with kernel NTFS3 driver)
+# Date: 2025-07-06
 
 # Exit on errors
 set -e
@@ -113,6 +113,8 @@ Examples:
   $0 --clean --name MyOS --kernel 6.15.3 --size 1024
   $0 --qemu-only --threads 4
   $0 --busybox-config my_busybox.config --kernel-config my_kernel.config
+
+Note: This version uses the kernel NTFS3 driver for native NTFS support.
 EOF
     exit 0
 }
@@ -263,7 +265,7 @@ setup_workspace() {
     
     # Create fresh initramfs directory structure
     rm -rf "${INITRAMFS_DIR}"
-    mkdir -p "${INITRAMFS_DIR}"/{bin,sbin,etc,proc,sys,dev,usr/bin,usr/sbin,tmp,root,run,lib,mnt,opt,var/log}
+    mkdir -p "${INITRAMFS_DIR}"/{bin,sbin,etc,proc,sys,dev,usr/bin,usr/sbin,tmp,root,run,lib,lib64,mnt,opt,var/log}
     mkdir -p "${INITRAMFS_DIR}"/{etc/init.d,etc/network}
     mkdir -p "${INITRAMFS_DIR}/usr/local/bin"
     mkdir -p "${INITRAMFS_DIR}/dev/pts"
@@ -377,6 +379,10 @@ modprobe amdgpu 2>/dev/null || echo "AMD graphics not available"
 modprobe nouveau 2>/dev/null || echo "NVIDIA graphics not available"
 modprobe virtio_gpu 2>/dev/null || echo "Virtio GPU not available"
 
+# Load NTFS3 module for native NTFS support
+echo "Loading NTFS3 module for native NTFS support..."
+modprobe ntfs3 2>/dev/null || echo "NTFS3 module not available"
+
 # Initialize the framebuffer
 for i in /sys/class/graphics/fb*; do
     [ -e "\$i" ] || continue
@@ -480,6 +486,13 @@ echo "===================="
 cat /proc/cpuinfo | grep "model name" | head -1
 free -m | awk 'NR==2{printf "Memory: %s/%s MB\n", \$3, \$2}'
 
+# Check for NTFS3 support
+if grep -q ntfs3 /proc/filesystems; then
+    echo -e "\e[1;32mNTFS3 support: AVAILABLE (native kernel driver)\e[0m"
+else
+    echo -e "\e[1;31mNTFS3 support: NOT AVAILABLE\e[0m"
+fi
+
 CUSTOM_CMDS=\$(ls -1 /usr/local/bin/ 2>/dev/null)
 if [ -n "\$CUSTOM_CMDS" ]; then
     echo -e "\n\e[1;32mCustom commands available:\e[0m"
@@ -490,6 +503,7 @@ fi
 
 echo ""
 echo -e "\e[1;32mType 'poweroff' or 'reboot' to exit.\e[0m"
+echo -e "\e[1;32mTo mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt\e[0m"
 echo ""
 
 touch /tmp/rcS_completed
@@ -527,6 +541,7 @@ export LOGNAME=root
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
 export PS1='\w # '
 alias ll='ls -la'
+alias mount-ntfs='mount -t ntfs3'
 EOF
     
     log "initramfs content created."
@@ -555,13 +570,13 @@ install_custom_scripts() {
             warning "No custom scripts found in ${CUSTOM_SCRIPTS_DIR}"
             warning "You can add scripts to ${CUSTOM_SCRIPTS_DIR} and rebuild to include them."
             
-            # Create default getdrives script
+            # Create default getdrives script with NTFS3 support
             log "Creating default getdrives.sh script..."
             cat <<'EOF' > "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
 #!/bin/sh
 #
 # getdrives.sh - List all drives and partitions in a BusyBox environment
-# For use with PrivilegeOS - Simplified version
+# For use with PrivilegeOS - Enhanced with kernel NTFS3 support
 
 echo "==============================================="
 echo "            STORAGE DEVICES LIST"
@@ -584,8 +599,35 @@ echo "\n\033[1;32mDisk Usage:\033[0m"
 echo "-----------------------------"
 df -h | grep -v "^none" || echo "No disk usage information available"
 
+echo "\n\033[1;32mFilesystem Detection:\033[0m"
+echo "-----------------------------"
+for dev in /dev/[hsv]d[a-z]*[0-9] /dev/nvme*n*p* /dev/mmcblk*p*; do
+    if [ -b "$dev" ]; then
+        fstype=$(blkid -s TYPE -o value "$dev" 2>/dev/null)
+        if [ -n "$fstype" ]; then
+            echo "$dev: $fstype"
+        fi
+    fi
+done
+
+echo "\n\033[1;32mSupported Filesystems:\033[0m"
+echo "-----------------------------"
+cat /proc/filesystems | grep -E "(ext|ntfs|vfat|xfs|btrfs)" || echo "No filesystems information available"
+
+if grep -q ntfs3 /proc/filesystems; then
+    echo "\n\033[1;32mNTFS3 Commands (Native Kernel Driver):\033[0m"
+    echo "-----------------------------"
+    echo "Mount NTFS partition: mount -t ntfs3 /dev/sdXN /mnt"
+    echo "Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt"
+    echo "Mount with specific options: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt"
+    echo "Check filesystem: fsck.ntfs /dev/sdXN (if available)"
+else
+    echo "\n\033[1;31mNTFS3 support: NOT AVAILABLE\033[0m"
+fi
+
 echo "\n\033[1;32mTo examine a partition:\033[0m"
-echo "  mount /dev/XXX /mnt"
+echo "  mount -t ntfs3 /dev/XXX /mnt  (for NTFS)"
+echo "  mount /dev/XXX /mnt           (for other filesystems)"
 echo "  cd /mnt"
 echo "  ls -la"
 EOF
@@ -600,13 +642,13 @@ EOF
         mkdir -p "${CUSTOM_SCRIPTS_DIR}"
         warning "No custom scripts directory found. Created one at ${CUSTOM_SCRIPTS_DIR}"
 
-        # Create default getdrives script
+        # Create default getdrives script with NTFS3 support
         log "Creating default getdrives.sh script..."
         cat <<'EOF' > "${CUSTOM_SCRIPTS_DIR}/getdrives.sh"
 #!/bin/sh
 #
 # getdrives.sh - List all drives and partitions in a BusyBox environment
-# For use with PrivilegeOS - Simplified version
+# For use with PrivilegeOS - Enhanced with kernel NTFS3 support
 
 echo "==============================================="
 echo "            STORAGE DEVICES LIST"
@@ -629,8 +671,35 @@ echo "\n\033[1;32mDisk Usage:\033[0m"
 echo "-----------------------------"
 df -h | grep -v "^none" || echo "No disk usage information available"
 
+echo "\n\033[1;32mFilesystem Detection:\033[0m"
+echo "-----------------------------"
+for dev in /dev/[hsv]d[a-z]*[0-9] /dev/nvme*n*p* /dev/mmcblk*p*; do
+    if [ -b "$dev" ]; then
+        fstype=$(blkid -s TYPE -o value "$dev" 2>/dev/null)
+        if [ -n "$fstype" ]; then
+            echo "$dev: $fstype"
+        fi
+    fi
+done
+
+echo "\n\033[1;32mSupported Filesystems:\033[0m"
+echo "-----------------------------"
+cat /proc/filesystems | grep -E "(ext|ntfs|vfat|xfs|btrfs)" || echo "No filesystems information available"
+
+if grep -q ntfs3 /proc/filesystems; then
+    echo "\n\033[1;32mNTFS3 Commands (Native Kernel Driver):\033[0m"
+    echo "-----------------------------"
+    echo "Mount NTFS partition: mount -t ntfs3 /dev/sdXN /mnt"
+    echo "Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt"
+    echo "Mount with specific options: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt"
+    echo "Check filesystem: fsck.ntfs /dev/sdXN (if available)"
+else
+    echo "\n\033[1;31mNTFS3 support: NOT AVAILABLE\033[0m"
+fi
+
 echo "\n\033[1;32mTo examine a partition:\033[0m"
-echo "  mount /dev/XXX /mnt"
+echo "  mount -t ntfs3 /dev/XXX /mnt  (for NTFS)"
+echo "  mount /dev/XXX /mnt           (for other filesystems)"
 echo "  cd /mnt"
 echo "  ls -la"
 EOF
@@ -690,13 +759,29 @@ build_kernel() {
         ./scripts/config --enable CONFIG_DRM_FBDEV_EMULATION
         ./scripts/config --enable CONFIG_BACKLIGHT_CLASS_DEVICE
         
-        ./scripts/config --enable CONFIG_NTFS_FS
-        ./scripts/config --enable CONFIG_NTFS_RW
+        # Enhanced filesystem support with NTFS3
         ./scripts/config --enable CONFIG_VFAT_FS
         ./scripts/config --enable CONFIG_MSDOS_FS
         ./scripts/config --enable CONFIG_FAT_DEFAULT_UTF8
-        ./scripts/config --enable CONFIG_FUSE_FS
         ./scripts/config --enable CONFIG_EXFAT_FS
+        ./scripts/config --enable CONFIG_EXT4_FS
+        ./scripts/config --enable CONFIG_EXT2_FS
+        ./scripts/config --enable CONFIG_EXT3_FS
+        ./scripts/config --enable CONFIG_XFS_FS
+        ./scripts/config --enable CONFIG_BTRFS_FS
+        
+        # Enable NTFS3 native kernel driver
+        ./scripts/config --enable CONFIG_NTFS3_FS
+        ./scripts/config --enable CONFIG_NTFS3_64BIT_CLUSTER
+        ./scripts/config --enable CONFIG_NTFS3_LZX_XPRESS
+        ./scripts/config --enable CONFIG_NTFS3_FS_POSIX_ACL
+        
+        # Disable old NTFS driver to avoid conflicts
+        ./scripts/config --disable CONFIG_NTFS_FS
+        
+        # Remove FUSE (no longer needed for NTFS support)
+        ./scripts/config --disable CONFIG_FUSE_FS
+        ./scripts/config --disable CONFIG_CUSE
         
         ./scripts/config --enable CONFIG_SND
         ./scripts/config --enable CONFIG_SND_HDA_INTEL
@@ -812,15 +897,21 @@ echo Loading ${OS_NAME}...
 EOF
     
     cat <<EOF | sudo tee "${BUILD_DIR}/mnt/README.txt" > /dev/null
-${OS_NAME} - A minimal Linux distribution
+${OS_NAME} - A minimal Linux distribution with native NTFS3 support
 Built on: $(date)
 Kernel version: ${KERNEL_VER}
 BusyBox version: ${BUSYBOX_VER}
+NTFS support: Native kernel NTFS3 driver
 
 This is a bootable UEFI image. To boot:
 1. Make sure UEFI boot is enabled
 2. Boot from this device
 3. The system should automatically start as root
+
+NTFS Support (Native Kernel Driver):
+- Mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt
+- Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt
+- Mount with specific permissions: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt
 
 For technical support or issues:
 - Check logs in /var/log/
@@ -951,13 +1042,13 @@ main() {
     echo -e "${BLUE}${BOLD}Building ${OS_NAME}${NC}"
     echo -e "${BLUE}Kernel version: ${KERNEL_VER}${NC}"
     echo -e "${BLUE}BusyBox version: ${BUSYBOX_VER}${NC}"
+    echo -e "${BLUE}NTFS support: Native kernel NTFS3 driver${NC}"
     echo -e "${BLUE}Using ${THREADS} threads for compilation${NC}"
     echo -e "${BLUE}Disk image size: ${IMAGE_SIZE}MB${NC}"
     echo -e "${BLUE}Custom scripts directory: ${CUSTOM_SCRIPTS_DIR}${NC}"
     echo ""
 
-    # Uncomment if needed to ensure build environment is correct
-    # check_dependencies
+    check_dependencies
 
     setup_workspace
     download_sources
@@ -988,17 +1079,25 @@ main() {
     echo -e "${GREEN}- OS Name: ${OS_NAME}${NC}"
     echo -e "${GREEN}- Kernel: ${KERNEL_VER}${NC}"
     echo -e "${GREEN}- BusyBox: ${BUSYBOX_VER}${NC}"
+    echo -e "${GREEN}- NTFS support: Native kernel NTFS3 driver${NC}"
     echo -e "${GREEN}- Image: ${DISK_IMG} ($(du -h "${DISK_IMG}" | cut -f1))${NC}"
     echo -e "${GREEN}- Logs: ${LOG_DIR}${NC}"
     
-    SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f | wc -l)
+    SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f 2>/dev/null | wc -l)
     if [ "$SCRIPT_COUNT" -gt 0 ]; then
         echo -e "${GREEN}- Installed custom scripts: ${SCRIPT_COUNT}${NC}"
-        echo -e "${GREEN}  $(ls -1 "${INITRAMFS_DIR}/usr/local/bin" | tr '\n' ' ')${NC}"
+        echo -e "${GREEN}  $(ls -1 "${INITRAMFS_DIR}/usr/local/bin" 2>/dev/null | tr '\n' ' ')${NC}"
     else
         echo -e "${YELLOW}- No custom scripts installed${NC}"
         echo -e "${YELLOW}  Add scripts to ${CUSTOM_SCRIPTS_DIR} before building to include them${NC}"
     fi
+    
+    echo ""
+    echo -e "${GREEN}${BOLD}NTFS3 Support (Native Kernel Driver):${NC}"
+    echo -e "${GREEN}- Mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt${NC}"
+    echo -e "${GREEN}- Mount NTFS read-only: mount -t ntfs3 -o ro /dev/sdXN /mnt${NC}"
+    echo -e "${GREEN}- Mount with specific permissions: mount -t ntfs3 -o uid=0,gid=0,fmask=133,dmask=022 /dev/sdXN /mnt${NC}"
+    echo -e "${GREEN}- Alias: mount-ntfs command available${NC}"
     echo ""
 }
 
