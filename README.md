@@ -22,6 +22,47 @@
 * [Changelog](#-changelog)
 * [Acknowledgments](#-acknowledgments)
 
+## IMPORTANT LEGAL NOTICE
+
+**PrivilegeOS is intended for AUTHORIZED SECURITY TESTING ONLY**
+
+### Permitted Use
+- ✅ Systems you own
+- ✅ Authorized penetration testing with written consent
+- ✅ Educational environments and labs
+- ✅ Security research with proper permissions
+
+### Prohibited Use
+- ❌ Unauthorized access to any system
+- ❌ Any illegal or malicious activities
+- ❌ Use without explicit written permission
+- ❌ Violating any local, state, or federal laws
+
+### User Responsibility
+By downloading, using, or distributing this software, you acknowledge:
+1. You will only use this tool on systems you own or have explicit authorization to test
+2. You are responsible for complying with all applicable laws
+3. You will not use this tool for unauthorized access or malicious purposes
+4. You understand the legal implications of using penetration testing tools
+
+### No Warranty
+This software is provided "AS IS" without warranty of any kind.
+The authors are not liable for any damages or legal consequences.
+
+## Educational Purpose Statement
+
+PrivilegeOS is developed for:
+- **Cybersecurity education** and training
+- **Defensive security** understanding
+- **Authorized vulnerability assessment**
+- **Security research** and improvement
+
+This tool helps security professionals and students understand:
+- How these attacks work
+- How to detect such attacks
+- How to defend against these techniques
+- Proper security testing methodologies
+
 ## 🔍 Overview
 
 PrivilegeOS is a minimal, bootable Linux distribution built specifically for penetration testing scenarios involving Windows systems. It features native NTFS3 kernel support, custom penetration testing tools, and specialized utilities for Windows admin access bypass techniques.
