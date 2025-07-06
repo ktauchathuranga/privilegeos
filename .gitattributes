@@ -1,5 +1,1 @@
 *.img filter=lfs diff=lfs merge=lfs -text
-*.imggit filter=lfs diff=lfs merge=lfs -text
-add filter=lfs diff=lfs merge=lfs -text
-*.img
-*.img
