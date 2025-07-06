@@ -842,67 +842,6 @@ Licensed under GNU General Public License v2.0
 #### Additional Components
 All other components maintain their respective licenses. See individual source files for details.
 
-## 📝 Changelog
-
-### Version 2.0.0 (2025-07-06)
-
-#### 🎉 Major Features
-- **Native NTFS3 Support**: Replaced NTFS-3G with kernel NTFS3 driver
-- **Enhanced Windows Bypass**: Improved getadmin tool with hibernation handling
-- **Restoration Tool**: New putadmin tool for system restoration
-- **UEFI Boot**: Full UEFI firmware support
-
-#### 🔧 Improvements
-- **Build System**: Completely rewritten build script with better error handling
-- **Hardware Support**: Enhanced drivers for modern hardware
-- **User Interface**: Color-coded output and improved messaging
-- **Documentation**: Comprehensive README and help systems
-
-#### 🐛 Bug Fixes
-- Fixed mounting issues with hibernated Windows systems
-- Resolved file permission problems on NTFS partitions
-- Corrected unmounting failures
-- Fixed kernel module loading issues
-
-#### 🔒 Security Updates
-- Updated kernel to 6.15.3 with latest security patches
-- Improved file verification and backup systems
-- Enhanced error handling to prevent system corruption
-- Added comprehensive logging for audit trails
-
-### Version 1.0.0 (2025-01-15)
-
-#### 🎉 Initial Release
-- **Core System**: Linux kernel 6.15.3 with BusyBox 1.36.1
-- **NTFS Support**: NTFS-3G integration for Windows filesystem access
-- **Basic Tools**: getdrives script for drive analysis
-- **UEFI Support**: Basic UEFI boot capability
-- **USB Boot**: Bootable USB image creation
-
-#### 🔧 Features
-- **Automatic Root**: No login required, automatic root access
-- **Drive Detection**: Automatic storage device detection
-- **Network Support**: Basic ethernet and Wi-Fi support
-- **Build System**: Automated build process with QEMU testing
-
-### Roadmap
-
-#### Version 2.1.0 (Planned: Q3 2025)
-- [ ] **GUI Interface**: Optional graphical interface with web browser
-- [ ] **Network Tools**: SSH, VNC, and remote access tools
-- [ ] **Memory Analysis**: RAM dump and analysis capabilities
-- [ ] **Reporting**: Automated report generation
-- [ ] **Plugin System**: Extensible architecture for custom tools
-
-#### Version 3.0.0 (Planned: Q4 2025)
-- [ ] **Container Support**: Docker/Podman integration
-- [ ] **Cloud Integration**: Cloud storage and remote management
-- [ ] **Mobile Support**: Android and iOS companion apps
-- [ ] **AI Integration**: Machine learning for threat detection
-- [ ] **Blockchain**: Secure audit trails with blockchain technology
-
----
-
 **Project Repository**: https://github.com/ktauchathuranga/privilegeos  
 **Issue Tracker**: https://github.com/ktauchathuranga/privilegeos/issues  
 
