@@ -6,20 +6,83 @@
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [System Requirements](#system-requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Built-in Tools](#built-in-tools)
-- [Windows Admin Bypass](#windows-admin-bypass)
-- [Building from Source](#building-from-source)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
-- [Security Notice](#security-notice)
-- [Contributing](#contributing)
-- [License](#license)
-- [Changelog](#changelog)
+* [🔍 Overview](#-overview)
+* [✨ Features](#-features)
+
+  * [Core System](#core-system)
+  * [Security Tools](#security-tools)
+  * [User Experience](#user-experience)
+* [💻 System Requirements](#-system-requirements)
+
+  * [Minimum Requirements](#minimum-requirements)
+  * [Recommended Requirements](#recommended-requirements)
+  * [Supported Hardware](#supported-hardware)
+* [🚀 Installation](#-installation)
+
+  * [Quick Start](#quick-start)
+  * [Alternative Methods](#alternative-methods)
+
+    * [Using Balena Etcher (GUI)](#using-balena-etcher-gui)
+    * [Using Rufus (Windows)](#using-rufus-windows)
+* [📖 Usage](#-usage)
+
+  * [First Boot](#first-boot)
+  * [Basic Commands](#basic-commands)
+  * [Command Reference](#command-reference)
+* [🛠️ Built-in Tools](#️-built-in-tools)
+
+  * [Drive Management Tools](#drive-management-tools)
+
+    * [`getdrives`](#getdrives)
+  * [Windows Admin Bypass Tools](#windows-admin-bypass-tools)
+
+    * [`getadmin`](#getadmin)
+    * [`putadmin`](#putadmin)
+* [🔧 Windows Admin Bypass](#-windows-admin-bypass)
+
+  * [Overview](#overview-1)
+  * [How It Works](#how-it-works)
+  * [Usage Process](#usage-process)
+  * [Security Considerations](#security-considerations)
+* [🔨 Building from Source](#-building-from-source)
+
+  * [Prerequisites](#prerequisites)
+
+    * [Ubuntu/Debian](#required-packages-ubuntudebian)
+    * [Fedora/CentOS](#required-packages-fedoracentos)
+  * [Build Process](#build-process)
+
+    * [Clone Repository](#1-clone-repository)
+    * [Basic Build](#2-basic-build)
+    * [Custom Build Options](#3-custom-build-options)
+    * [Build Options Reference](#4-build-options-reference)
+    * [Adding Custom Scripts](#adding-custom-scripts)
+    * [Build Directory Structure](#build-directory-structure)
+* [⚙️ Configuration](#️-configuration)
+
+  * [Kernel Configuration](#kernel-configuration)
+  * [BusyBox Configuration](#busybox-configuration)
+  * [Custom Configurations](#custom-configurations)
+* [🔧 Troubleshooting](#-troubleshooting)
+
+  * [Common Issues](#common-issues)
+  * [Debug Information](#debug-information)
+  * [Log Files](#log-files)
+  * [Getting Help](#getting-help)
+* [🔒 Security Notice](#-security-notice)
+
+  * [Legal Disclaimer](#legal-disclaimer)
+  * [Ethical Guidelines](#ethical-guidelines)
+  * [Technical Security](#technical-security)
+  * [Updates and Patches](#updates-and-patches)
+* [🤝 Contributing](#-contributing)
+
+  * [Development Process](#development-process)
+  * [Contribution Guidelines](#contribution-guidelines)
+  * [Development Environment](#development-environment)
+* [📄 License](#-license)
+* [📝 Changelog](#-changelog)
+* [🙏 Acknowledgments](#-acknowledgments)
 
 ## 🔍 Overview
 
