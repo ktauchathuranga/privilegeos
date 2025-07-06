@@ -1,0 +1,22 @@
+# /etc/inittab for PrivilegeOS
+
+# System initialization
+::sysinit:/etc/init.d/rcS
+
+# Start ROOT shells on consoles
+tty1::respawn:/bin/sh
+tty2::respawn:/bin/sh
+tty3::respawn:/bin/sh
+
+# Start a ROOT shell on the first serial port (for debugging)
+ttyS0::respawn:/bin/sh
+
+# What to do when restarting the init process
+::restart:/sbin/init
+
+# What to do on ctrl-alt-del
+::ctrlaltdel:/sbin/reboot
+
+# What to do when shutting down
+::shutdown:/bin/umount -a -r
+::shutdown:/sbin/swapoff -a

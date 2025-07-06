@@ -1,0 +1,27 @@
+  CLEAN   arch/x86/boot/compressed
+  CLEAN   arch/x86/boot
+  CLEAN   arch/x86/entry/vdso
+  CLEAN   arch/x86/kernel/cpu
+  CLEAN   arch/x86/kernel
+  CLEAN   arch/x86/realmode/rm
+  CLEAN   arch/x86/tools
+  CLEAN   arch/x86/lib
+  CLEAN   certs
+  CLEAN   drivers/firmware/efi/libstub
+  CLEAN   drivers/scsi
+  CLEAN   drivers/tty/vt
+  CLEAN   drivers/video/logo
+  CLEAN   init
+  CLEAN   lib/raid6
+  CLEAN   lib
+  CLEAN   net/wireless
+  CLEAN   security/selinux
+  CLEAN   usr
+  CLEAN   .
+  CLEAN   vmlinux.symvers modules.builtin modules.builtin.modinfo vmlinux.unstripped .vmlinux.export.c
+  CLEAN   scripts/basic
+  CLEAN   scripts/kconfig
+  CLEAN   scripts/mod
+  CLEAN   scripts/selinux/mdp
+  CLEAN   scripts
+  CLEAN   include/config include/generated arch/x86/include/generated .config .config.old .version

@@ -1,0 +1,457 @@
+scripts/kconfig/conf -s Config.in
+#
+# using defaults found in .config
+#
+  SPLIT   include/autoconf.h -> include/config/*
+  GEN     include/bbconfigopts.h
+  GEN     include/common_bufsiz.h
+  GEN     include/embedded_scripts.h
+  HOSTCC  applets/usage
+  HOSTCC  applets/applet_tables
+  GEN     include/usage_compressed.h
+  GEN     include/applet_tables.h include/NUM_APPLETS.h
+  GEN     include/applet_tables.h include/NUM_APPLETS.h
+  HOSTCC  applets/usage_pod
+  CC      applets/applets.o
+  LD      applets/built-in.o
+  DOC     busybox.pod
+  DOC     BusyBox.txt
+/bin/sh: line 1: pod2text: command not found
+  DOC     busybox.1
+make: [/home/ktauchathuranga/cloned/LOL2/busybox-1.36.1/Makefile.custom:159: docs/BusyBox.txt] Error 127 (ignored)
+/bin/sh: line 1: pod2man: command not found
+make: [/home/ktauchathuranga/cloned/LOL2/busybox-1.36.1/Makefile.custom:164: docs/busybox.1] Error 127 (ignored)
+/bin/sh: line 1: pod2html: command not found
+make: [/home/ktauchathuranga/cloned/LOL2/busybox-1.36.1/Makefile.custom:174: docs/busybox.net/BusyBox.html] Error 127 (ignored)
+  DOC     BusyBox.html
+  CC      libbb/appletlib.o
+  CC      libbb/lineedit.o
+  CC      shell/ash.o
+  CC      shell/hush.o
+shell/hush.c: In function ‘expand_one_var’:
+shell/hush.c:6606:15: warning: ‘exp_word’ is used uninitialized [-Wuninitialized]
+ 6606 |         char *exp_word = exp_word; /* for compiler */
+      |               ^~~~~~~~
+shell/hush.c:6606:15: note: ‘exp_word’ was declared here
+ 6606 |         char *exp_word = exp_word; /* for compiler */
+      |               ^~~~~~~~
+  AR      libbb/lib.a
+  AR      shell/lib.a
+  LINK    busybox_unstripped
+Static linking against glibc, can't use --gc-sections
+Trying libraries: m resolv rt
+ Library m is needed, can't exclude it (yet)
+ Library resolv is needed, can't exclude it (yet)
+ Library rt is not needed, excluding it
+ Library m is needed, can't exclude it (yet)
+ Library resolv is needed, can't exclude it (yet)
+Final link with: m resolv
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/arch -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ash -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/base32 -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/base64 -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/cat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/chattr -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/chgrp -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/chmod -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/chown -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/conspy -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/cp -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/cpio -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/cttyhack -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/date -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/dd -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/df -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/dmesg -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/dnsdomainname -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/dumpkmap -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/echo -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ed -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/egrep -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/false -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/fatattr -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/fdflush -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/fgrep -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/fsync -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/getopt -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/grep -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/gunzip -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/gzip -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/hostname -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/hush -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ionice -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/iostat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ipcalc -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/kbd_mode -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/kill -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/link -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/linux32 -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/linux64 -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ln -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/login -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ls -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/lsattr -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/lzop -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/makemime -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mkdir -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mknod -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mktemp -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/more -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mount -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mountpoint -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mpstat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mt -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/mv -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/netstat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/nice -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/pidof -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ping -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ping6 -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/pipe_progress -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/printenv -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/ps -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/pwd -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/reformime -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/resume -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/rev -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/rm -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/rmdir -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/rpm -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/run-parts -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/scriptreplay -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/sed -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/setarch -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/setpriv -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/setserial -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/sh -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/sleep -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/stat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/stty -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/su -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/sync -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/tar -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/touch -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/true -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/umount -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/uname -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/usleep -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/vi -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/watch -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//bin/zcat -> busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//linuxrc -> bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/acpid -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/adjtimex -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/arp -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/blkid -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/blockdev -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/bootchartd -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/depmod -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/devmem -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/fbsplash -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/fdisk -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/findfs -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/freeramdisk -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/fsck -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/fsck.minix -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/fstrim -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/getty -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/halt -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/hdparm -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/hwclock -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ifconfig -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ifdown -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ifenslave -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ifup -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/init -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/insmod -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ip -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ipaddr -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/iplink -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/ipneigh -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/iproute -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/iprule -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/iptunnel -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/klogd -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/loadkmap -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/logread -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/losetup -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/lsmod -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/makedevs -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mdev -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mkdosfs -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mke2fs -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mkfs.ext2 -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mkfs.minix -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mkfs.vfat -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/mkswap -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/modinfo -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/modprobe -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/nameif -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/pivot_root -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/poweroff -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/raidautorun -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/reboot -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/rmmod -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/route -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/run-init -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/runlevel -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/setconsole -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/slattach -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/start-stop-daemon -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/sulogin -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/swapoff -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/swapon -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/switch_root -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/sysctl -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/syslogd -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/tunctl -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/udhcpc -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/uevent -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/vconfig -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/watchdog -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//sbin/zcip -> ../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/[ -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/[[ -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ascii -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/awk -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/basename -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/bc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/beep -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/blkdiscard -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/bunzip2 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/bzcat -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/bzip2 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/cal -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/chpst -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/chrt -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/chvt -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/cksum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/clear -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/cmp -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/comm -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/crc32 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/crontab -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/cryptpw -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/cut -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/deallocvt -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/diff -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dirname -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dos2unix -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dpkg -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dpkg-deb -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/du -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/dumpleases -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/eject -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/env -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/envdir -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/envuidgid -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/expand -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/expr -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/factor -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/fallocate -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/fgconsole -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/find -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/flock -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/fold -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/free -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ftpget -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ftpput -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/fuser -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/groups -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/hd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/head -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/hexdump -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/hexedit -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/hostid -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/id -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/install -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ipcrm -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ipcs -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/killall -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/last -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/less -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/logger -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/logname -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lpq -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lpr -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lsof -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lspci -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lsscsi -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lsusb -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lzcat -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/lzma -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/man -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/md5sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/mesg -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/microcom -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/mkfifo -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/mkpasswd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nl -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nmeter -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nohup -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nproc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nsenter -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/nslookup -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/od -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/openvt -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/passwd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/paste -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/patch -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pgrep -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pkill -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pmap -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/printf -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pscan -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pstree -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/pwdx -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/readlink -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/realpath -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/renice -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/reset -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/resize -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/rpm2cpio -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/runsv -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/runsvdir -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/rx -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/script -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/seq -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/setfattr -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/setkeycodes -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/setsid -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/setuidgid -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sha1sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sha256sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sha3sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sha512sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/showkey -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/shred -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/shuf -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/smemcap -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/softlimit -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sort -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/split -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ssl_client -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/strings -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sum -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/sv -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/svc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/svok -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tac -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tail -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/taskset -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tcpsvd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tee -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/telnet -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/test -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tftp -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/time -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/timeout -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/top -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tr -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/traceroute -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/traceroute6 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tree -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/truncate -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ts -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tsort -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/tty -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/ttysize -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/udhcpc6 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/udpsvd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unexpand -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/uniq -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unix2dos -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unlink -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unlzma -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unshare -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unxz -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/unzip -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/uptime -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/users -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/uudecode -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/uuencode -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/vlock -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/volname -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/w -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/wall -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/wc -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/wget -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/which -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/who -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/whoami -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/whois -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/xargs -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/xxd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/xz -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/xzcat -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/bin/yes -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/add-shell -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/addgroup -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/adduser -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/arping -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/brctl -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/chat -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/chpasswd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/chroot -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/crond -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/delgroup -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/deluser -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/dhcprelay -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/dnsd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ether-wake -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/fakeidentd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/fbset -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/fdformat -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/fsfreeze -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ftpd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/httpd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/i2cdetect -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/i2cdump -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/i2cget -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/i2cset -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/i2ctransfer -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ifplugd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/inetd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/killall5 -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/loadfont -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/lpd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/mim -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/nanddump -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/nandwrite -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/nbd-client -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/nologin -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ntpd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/partprobe -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/popmaildir -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/powertop -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/rdate -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/rdev -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/readahead -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/readprofile -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/remove-shell -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/rtcwake -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/seedrng -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/sendmail -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/setfont -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/setlogcons -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/svlogd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/telnetd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/tftpd -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubiattach -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubidetach -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubimkvol -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubirename -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubirmvol -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubirsvol -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/ubiupdatevol -> ../../bin/busybox
+  /home/ktauchathuranga/cloned/LOL2/build/initramfs//usr/sbin/udhcpd -> ../../bin/busybox
+
+
+--------------------------------------------------
+You will probably need to make your busybox binary
+setuid root to ensure all configured applets will
+work properly.
+--------------------------------------------------
+

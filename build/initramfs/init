@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# Init script for PrivilegeOS
+# Set up kernel message logging level (1=critical, 7=debug)
+dmesg -n 7
+
+# Force output to the video console
+exec > /dev/tty0 2>&1
+
+echo "Starting PrivilegeOS init process..."
+
+# Mount essential virtual filesystems
+mount -t proc none /proc || echo "Failed to mount /proc"
+mount -t sysfs none /sys || echo "Failed to mount /sys"
+mount -t devtmpfs none /dev || echo "Failed to mount /dev"
+mount -t tmpfs none /tmp || echo "Failed to mount /tmp"
+mount -t devpts devpts /dev/pts || echo "Failed to mount /dev/pts"
+
+chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+
+# Setup loopback interface
+ip link set lo up
+
+# Load common modules for hardware support
+echo "Loading kernel modules for hardware support..."
+modprobe fbcon 2>/dev/null || echo "Framebuffer console not available"
+modprobe vt 2>/dev/null || echo "Virtual terminal not available"
+
+# Load storage device modules
+echo "Loading storage device modules..."
+modprobe nvme 2>/dev/null || echo "NVMe module not available"
+modprobe nvme_core 2>/dev/null || echo "NVMe core module not available"
+modprobe ahci 2>/dev/null || echo "AHCI module not available"
+modprobe sd_mod 2>/dev/null || echo "SCSI disk module not available"
+modprobe usb_storage 2>/dev/null || echo "USB storage module not available"
+
+# Load display drivers
+echo "Loading display drivers..."
+modprobe i915 2>/dev/null || echo "Intel graphics not available"
+modprobe amdgpu 2>/dev/null || echo "AMD graphics not available"
+modprobe nouveau 2>/dev/null || echo "NVIDIA graphics not available"
+modprobe virtio_gpu 2>/dev/null || echo "Virtio GPU not available"
+
+# Load NTFS3 module for native NTFS support
+echo "Loading NTFS3 module for native NTFS support..."
+modprobe ntfs3 2>/dev/null || echo "NTFS3 module not available"
+
+# Initialize the framebuffer
+for i in /sys/class/graphics/fb*; do
+    [ -e "$i" ] || continue
+    echo "Found framebuffer: $(basename $i)"
+done
+
+# Set up root user environment
+export HOME=/root
+export USER=root
+export LOGNAME=root
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+
+hostname -F /etc/hostname
+
+echo "Transferring control to BusyBox init..."
+exec /sbin/init

@@ -1,0 +1,7 @@
+export HOME=/root
+export USER=root
+export LOGNAME=root
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+export PS1='\w # '
+alias ll='ls -la'
+alias mount-ntfs='mount -t ntfs3'
