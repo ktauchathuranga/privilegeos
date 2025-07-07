@@ -2,7 +2,7 @@
 
 # Script: build.sh
 # Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
-# Version: 3.4 (Replaced NTFS-3G with kernel NTFS3 driver)
+# Version: 0.0.0 (Initial Release)
 # Date: 2025-07-06
 
 # Exit on errors
