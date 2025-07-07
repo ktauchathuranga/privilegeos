@@ -90,6 +90,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **NTFS Mount Tools**: Advanced NTFS mounting with various options
 - **Drive Analysis**: Comprehensive partition and filesystem detection
 - **Network Tools**: Basic network diagnostics and configuration
+- **Hibernation Handling**: Automatic hibernation file detection and removal
 
 ### User Experience
 - **Automatic Boot**: No user interaction required
@@ -205,7 +206,7 @@ getadmin -f -d
 
 # Restore Windows to normal
 putadmin --help
-putadmin -f
+putadmin -f -d
 
 # Network configuration
 ip addr show
@@ -218,7 +219,7 @@ ip link set eth0 up
 |---------|-------------|---------|
 | `getdrives` | List all drives and partitions | `getdrives` |
 | `getadmin` | Windows admin bypass tool | `getadmin -f -d` |
-| `putadmin` | Restore Windows to normal | `putadmin -f` |
+| `putadmin` | Restore Windows to normal | `putadmin -f -d` |
 | `mount-ntfs` | Mount NTFS partition (alias) | `mount-ntfs /dev/sda2 /mnt` |
 | `poweroff` | Shutdown system | `poweroff` |
 | `reboot` | Restart system | `reboot` |
@@ -270,10 +271,11 @@ Advanced Windows admin access bypass tool using sticky keys replacement.
 
 **Features:**
 - Automatic Windows partition detection
-- Hibernation file handling
+- Hibernation file handling and optional deletion
 - File integrity verification
 - Multiple mount options
 - Comprehensive logging
+- Legal authorization confirmation
 
 **Usage:**
 ```bash
@@ -289,8 +291,13 @@ getadmin --help
 
 **Options:**
 - `-f, --force`: Use force option when mounting NTFS partitions
-- `-d, --delete-hiberfil`: Delete hiberfil.sys if found
+- `-d, --delete-hiberfil`: Delete hiberfil.sys if found (helps with hibernated Windows)
 - `-h, --help`: Show help message
+
+**Note on hibernation file deletion:**
+- Allows proper NTFS mounting of hibernated Windows systems
+- Prevents Windows from resuming from hibernation (cold boot instead)
+- Frees up disk space (hiberfil.sys can be several GB)
 
 #### `putadmin`
 Windows system restoration tool to reverse getadmin modifications.
@@ -300,18 +307,27 @@ Windows system restoration tool to reverse getadmin modifications.
 - File restoration verification
 - Cleanup of temporary files
 - Safety checks and confirmations
+- Hibernation file handling and optional deletion
+- Complete system restoration
 
 **Usage:**
 ```bash
 # Basic restoration
 putadmin
 
-# Force restoration
-putadmin --force
+# Force restoration with hibernation file deletion
+putadmin --force --delete-hiberfil
 
 # Show help
 putadmin --help
 ```
+
+**Options:**
+- `-f, --force`: Use force option when mounting NTFS partitions
+- `-d, --delete-hiberfil`: Delete hiberfil.sys if found (helps with hibernated Windows)
+- `-h, --help`: Show help message
+
+**Note:** `putadmin` now includes the same hibernation file handling capabilities as `getadmin`, making it consistent and able to handle hibernated Windows systems during restoration.
 
 ## 🔧 Windows Admin Bypass
 
@@ -322,10 +338,11 @@ PrivilegeOS includes a sophisticated Windows admin bypass system that uses the "
 ### How It Works
 
 1. **Detection**: Script scans for Windows NTFS partitions
-2. **Mounting**: Mounts Windows filesystem with write access
-3. **Backup**: Creates backup of original system files
-4. **Replacement**: Replaces `sethc.exe` with `cmd.exe`
-5. **Verification**: Confirms operation success
+2. **Hibernation Check**: Detects and optionally removes hibernation files
+3. **Mounting**: Mounts Windows filesystem with write access
+4. **Backup**: Creates backup of original system files
+5. **Replacement**: Replaces `sethc.exe` with `cmd.exe`
+6. **Verification**: Confirms operation success
 
 ### Usage Process
 
@@ -337,27 +354,46 @@ Boot from USB and wait for the command prompt.
 / # getadmin --force --delete-hiberfil
 ```
 
-#### Step 3: Confirm Operation
-When prompted, type `YES` to confirm the modification.
+**Note:** The tool will prompt for legal authorization confirmation before proceeding.
 
-#### Step 4: Boot Windows
+#### Step 3: Boot Windows
 Restart and boot into Windows normally.
 
-#### Step 5: Access Admin Shell
+#### Step 4: Access Admin Shell
 At the Windows login screen, press `Shift` five times. Instead of sticky keys, a command prompt with SYSTEM privileges will open.
 
-#### Step 6: Create Admin User
+#### Step 5: Create Admin User
 ```cmd
 net user administrator /active:yes
 net user newadmin password123 /add
 net localgroup administrators newadmin /add
 ```
 
-#### Step 7: Restore System (Optional)
+#### Step 6: Restore System (Optional)
 Boot back into PrivilegeOS and run:
 ```bash
-/ # putadmin --force
+/ # putadmin --force --delete-hiberfil
 ```
+
+### Hibernation File Handling
+
+Both `getadmin` and `putadmin` can handle Windows hibernation files:
+
+#### Automatic Detection
+- Detects `hiberfil.sys` presence automatically
+- Shows file size and hibernation status
+- Warns about hibernation implications
+
+#### Optional Deletion
+- Use `--delete-hiberfil` flag to automatically delete hibernation file
+- Prompts for confirmation before deletion
+- Verifies successful deletion
+- Frees up disk space (often several GB)
+
+#### Benefits of Deletion
+- Allows proper NTFS mounting of hibernated systems
+- Prevents Windows hibernation resume issues
+- Provides cleaner system state for modifications
 
 ### Security Considerations
 
@@ -367,6 +403,7 @@ Boot back into PrivilegeOS and run:
 - **Detection**: May be detected by security software
 - **Forensics**: Leaves traces in system logs
 - **Backup**: Always create backups before modification
+- **Hibernation**: Deletion prevents hibernation resume (unsaved work will be lost)
 
 ## 🔨 Building from Source
 
@@ -486,21 +523,21 @@ Hello from custom script!
 
 ```
 privilegeos/
-├── build.sh      # Main build script
-├── scripts/                   # Custom scripts directory
-│   ├── getadmin.sh           # Windows admin bypass tool
-│   ├── putadmin.sh           # Windows restoration tool
-│   └── getdrives.sh          # Drive analysis tool
-├── configs/                   # Configuration files
-│   ├── kernel.config         # Kernel configuration
-│   └── busybox.config        # BusyBox configuration
-├── build/                     # Build output directory
-│   ├── PrivilegeOS.img       # Final disk image
-│   ├── initramfs/            # Root filesystem
-│   └── logs/                 # Build logs
-├── linux-6.15.3/            # Kernel source (downloaded)
-├── busybox-1.36.1/           # BusyBox source (downloaded)
-└── README.md                 # This file
+├── build.sh                  # Main build script
+├── scripts/                  # Custom scripts directory
+│   ├── getadmin.sh          # Windows admin bypass tool
+│   ├── putadmin.sh          # Windows restoration tool
+│   └── getdrives.sh         # Drive analysis tool
+├── configs/                 # Configuration files
+│   ├── kernel.config        # Kernel configuration
+│   └── busybox.config       # BusyBox configuration
+├── build/                   # Build output directory
+│   ├── PrivilegeOS.img      # Final disk image
+│   ├── initramfs/           # Root filesystem
+│   └── logs/                # Build logs
+├── linux-6.15.3/           # Kernel source (downloaded)
+├── busybox-1.36.1/          # BusyBox source (downloaded)
+└── README.md                # This file
 ```
 
 ## ⚙️ Configuration
@@ -540,26 +577,11 @@ BusyBox is configured with these utilities:
 - `ps`, `top`, `kill`, `killall`
 - `chmod`, `chown`, `chgrp`
 
-#### Network Utilities
-- `ping`, `wget`, `ip`, `ifconfig`
-- `netstat`, `route`, `arp`
-
 #### File Utilities
 - `blkid`, `fdisk`, `lsblk`
 - `mkfs.vfat`, `fsck`
 
 ### Custom Configurations
-
-#### Network Configuration
-```bash
-# Static IP configuration
-ip addr add 192.168.1.100/24 dev eth0
-ip route add default via 192.168.1.1
-
-# DHCP configuration
-ip link set eth0 up
-# DHCP client would need to be added manually
-```
 
 #### Mount Options
 ```bash
@@ -599,13 +621,14 @@ mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 1. Check if NTFS3 is available: `grep ntfs3 /proc/filesystems`
 2. Try force mounting: `mount -t ntfs3 -o rw,force /dev/sdX /mnt`
 3. Check for hibernation: look for `hiberfil.sys`
-4. Verify partition exists: `fdisk -l`
+4. Use hibernation deletion: `getadmin --delete-hiberfil` or `putadmin --delete-hiberfil`
+5. Verify partition exists: `fdisk -l`
 
 **Problem**: "Read-only file system" error
 **Solutions:**
 1. Remount with write permissions: `mount -o remount,rw /mnt`
 2. Check filesystem errors: `fsck.ntfs /dev/sdX`
-3. Remove hibernation file: `rm /mnt/hiberfil.sys`
+3. Remove hibernation file: `rm /mnt/hiberfil.sys` or use `--delete-hiberfil`
 
 #### getadmin Issues
 
@@ -614,14 +637,32 @@ mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 1. Use force option: `getadmin --force`
 2. Check partitions manually: `getdrives`
 3. Try different mount options
-4. Verify Windows is not BitLocker encrypted
+4. Use hibernation deletion: `getadmin --force --delete-hiberfil`
+5. Verify Windows is not BitLocker encrypted
 
 **Problem**: Permission denied errors
 **Solutions:**
 1. Check file permissions: `ls -la /mnt/Windows/System32/`
 2. Try changing permissions: `chmod 755 /mnt/Windows/System32/sethc.exe`
 3. Use force mount option
-4. Check for file attributes: `lsattr /mnt/Windows/System32/sethc.exe`
+4. Remove hibernation file: `getadmin --delete-hiberfil`
+5. Check for file attributes: `lsattr /mnt/Windows/System32/sethc.exe`
+
+**Problem**: Hibernation file conflicts
+**Solutions:**
+1. Use hibernation deletion: `getadmin --delete-hiberfil`
+2. Manual deletion: `rm /mnt/hiberfil.sys`
+3. Boot Windows normally first, then shut down properly
+4. Use force mount: `getadmin --force`
+
+#### putadmin Issues
+
+**Problem**: Cannot restore system
+**Solutions:**
+1. Use force option: `putadmin --force`
+2. Check for backup files: `ls -la /mnt/Windows/System32/sethc.exe.backup`
+3. Handle hibernation: `putadmin --force --delete-hiberfil`
+4. Verify system was previously modified by getadmin
 
 **Problem**: Bypass doesn't work in Windows
 **Solutions:**
@@ -673,6 +714,9 @@ mount | grep /dev/
 
 # Check disk usage
 df -h
+
+# Check for hibernation files
+find /mnt -name "hiberfil.sys" -ls 2>/dev/null
 ```
 
 ### Log Files
@@ -737,6 +781,7 @@ This tool may leave traces including:
 - Backup files in System32
 - Registry changes (if additional tools used)
 - Event log entries
+- Deleted hibernation files
 
 ### Updates and Patches
 
@@ -790,6 +835,7 @@ git checkout -b feature/my-new-feature
 - Test on multiple hardware configurations
 - Verify UEFI and Legacy BIOS compatibility
 - Test with various Windows versions
+- Test hibernation file handling
 - Document any limitations or known issues
 
 #### Documentation Updates
@@ -854,5 +900,11 @@ Special thanks to:
 - **Linux Kernel Team** for the robust kernel foundation
 - **BusyBox Team** for the essential utilities
 - **NTFS3 Developers** for native Windows filesystem support
-- **Arch Community** dor helping to make it robust
+- **Arch Community** for helping to make it robust
+
+---
+
+**Built with ❤️ for the cybersecurity community**
+
+*"Security through knowledge, not obscurity"*
 
