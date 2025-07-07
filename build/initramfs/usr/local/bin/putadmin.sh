@@ -3,7 +3,7 @@
 # putadmin.sh - Windows Admin Access Restoration Script for PrivilegeOS
 # This script finds Windows partitions and restores the original sticky keys functionality
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-06 11:45:55 UTC
+# Updated: 2025-07-07 02:35:12 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -15,6 +15,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 USE_FORCE=0
+DELETE_HIBERFIL=0
 CURRENT_MOUNTED_DEVICE=""
 
 # Logging function
@@ -44,17 +45,25 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -f, --force         Use force option when mounting NTFS partitions"
+    echo "  -d, --delete-hiberfil Delete hiberfil.sys if found (helps with hibernated Windows)"
     echo "  -h, --help          Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0                    # Normal restoration operation"
     echo "  $0 --force            # Use force mount option"
+    echo "  $0 --delete-hiberfil  # Delete hibernation file if found"
+    echo "  $0 -f -d              # Use both force mount and delete hiberfil"
     echo ""
     echo "Note: This script restores Windows system files that were modified by getadmin:"
     echo "  - Restores original sethc.exe from backup"
     echo "  - Restores original cmd.exe from backup"
     echo "  - Removes temporary files created during bypass"
     echo "  - Returns Windows to normal login functionality"
+    echo ""
+    echo "Note: Deleting hiberfil.sys will:"
+    echo "  - Allow proper NTFS mounting of hibernated Windows systems"
+    echo "  - Prevent Windows from resuming from hibernation (cold boot instead)"
+    echo "  - Free up disk space (hiberfil.sys can be several GB)"
     echo ""
 }
 
@@ -63,6 +72,10 @@ while [ $# -gt 0 ]; do
     case $1 in
         -f|--force)
             USE_FORCE=1
+            shift
+            ;;
+        -d|--delete-hiberfil)
+            DELETE_HIBERFIL=1
             shift
             ;;
         -h|--help)
@@ -89,7 +102,12 @@ if [ "$USE_FORCE" -eq 1 ]; then
 else
     echo -e "${BLUE}Force mount option: DISABLED (use --force to enable)${NC}"
 fi
-echo -e "${BLUE}Updated: 2025-07-06 11:45:55 UTC${NC}"
+if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+    echo -e "${YELLOW}Delete hiberfil.sys: ENABLED${NC}"
+else
+    echo -e "${BLUE}Delete hiberfil.sys: DISABLED (use --delete-hiberfil to enable)${NC}"
+fi
+echo -e "${BLUE}Updated: 2025-07-07 02:35:12 UTC${NC}"
 echo -e "${BLUE}User: ktauchathuranga${NC}"
 echo ""
 
@@ -175,6 +193,114 @@ safe_unmount() {
     return 0
 }
 
+# Function to handle hibernation file - NEW ADDITION
+handle_hibernation_file() {
+    local partition="$1"
+    
+    # Check if hibernation file exists
+    if [ -f "$MOUNT_POINT/hiberfil.sys" ]; then
+        HIBERFIL_SIZE=$(stat -c%s "$MOUNT_POINT/hiberfil.sys" 2>/dev/null)
+        HIBERFIL_SIZE_MB=$((HIBERFIL_SIZE / 1024 / 1024))
+        
+        warning "Hibernation file detected:"
+        warning "- File: $MOUNT_POINT/hiberfil.sys"
+        warning "- Size: $HIBERFIL_SIZE_MB MB"
+        warning "- This indicates Windows was hibernated, not shut down"
+        
+        if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+            echo ""
+            echo -e "${YELLOW}Preparing to delete hiberfil.sys...${NC}"
+            echo -e "${RED}WARNING: This will prevent Windows from resuming hibernation!${NC}"
+            echo -e "${RED}Windows will perform a cold boot instead of resuming.${NC}"
+            echo -e "${YELLOW}This is generally safe but any unsaved work will be lost.${NC}"
+            echo ""
+            echo -e "${YELLOW}Delete hiberfil.sys ($HIBERFIL_SIZE_MB MB)? (Type 'YES' to confirm): ${NC}"
+            read -r CONFIRM_DELETE
+            
+            if [ "$CONFIRM_DELETE" = "YES" ]; then
+                log "Deleting hiberfil.sys..."
+                
+                # Show before deletion
+                log "Before deletion:"
+                ls -la "$MOUNT_POINT/hiberfil.sys" 2>/dev/null
+                
+                # Try multiple deletion methods
+                DELETED=0
+                
+                # Method 1: Simple rm
+                if rm "$MOUNT_POINT/hiberfil.sys" 2>/dev/null; then
+                    DELETED=1
+                    success "hiberfil.sys deleted with rm command"
+                elif rm -f "$MOUNT_POINT/hiberfil.sys" 2>/dev/null; then
+                    DELETED=1
+                    success "hiberfil.sys deleted with rm -f command"
+                elif rm -rf "$MOUNT_POINT/hiberfil.sys" 2>/dev/null; then
+                    DELETED=1
+                    success "hiberfil.sys deleted with rm -rf command"
+                else
+                    error "Failed to delete hiberfil.sys with rm commands"
+                    
+                    # Method 2: Try with different attributes
+                    log "Trying to remove file attributes..."
+                    if command -v chattr >/dev/null 2>&1; then
+                        chattr -i "$MOUNT_POINT/hiberfil.sys" 2>/dev/null || true
+                        chattr -a "$MOUNT_POINT/hiberfil.sys" 2>/dev/null || true
+                        if rm -f "$MOUNT_POINT/hiberfil.sys" 2>/dev/null; then
+                            DELETED=1
+                            success "hiberfil.sys deleted after removing attributes"
+                        fi
+                    fi
+                fi
+                
+                if [ $DELETED -eq 1 ]; then
+                    # Verify deletion
+                    log "Verifying deletion..."
+                    if [ ! -f "$MOUNT_POINT/hiberfil.sys" ]; then
+                        success "Verification: hiberfil.sys is no longer present"
+                        success "Freed up $HIBERFIL_SIZE_MB MB of disk space"
+                    else
+                        error "Verification failed: hiberfil.sys still exists!"
+                        log "File still exists after deletion attempt:"
+                        ls -la "$MOUNT_POINT/hiberfil.sys" 2>/dev/null
+                        return 1
+                    fi
+                    
+                    # Force sync after deletion
+                    sync
+                    sleep 3
+                    sync
+                    
+                    success "Hibernation file successfully removed - continuing with restoration..."
+                    return 0
+                else
+                    error "Failed to delete hiberfil.sys with all methods"
+                    warning "You may need to:"
+                    warning "1. Boot Windows normally and disable hibernation"
+                    warning "2. Use a different tool to delete the file"
+                    warning "3. Try mounting with different options"
+                    return 1
+                fi
+            else
+                warning "Skipping hiberfil.sys deletion"
+                info "You can use --delete-hiberfil option to delete it automatically"
+                return 1
+            fi
+        else
+            echo ""
+            echo -e "${YELLOW}Recommended actions:${NC}"
+            echo -e "${YELLOW}1. Use --delete-hiberfil option to delete the hibernation file${NC}"
+            echo -e "${YELLOW}2. Or use --force option to force mount the hibernated filesystem${NC}"
+            echo -e "${YELLOW}3. Or boot Windows normally first, then shut down properly${NC}"
+            echo -e "${YELLOW}4. Or manually delete: rm -rf $MOUNT_POINT/hiberfil.sys${NC}"
+            echo ""
+            return 1
+        fi
+    else
+        info "No hibernation file found - Windows was shut down properly"
+        return 0
+    fi
+}
+
 # Function to try mounting with different options
 try_mount() {
     local partition="$1"
@@ -220,6 +346,21 @@ check_modified_windows_partition() {
     
     # Try to mount the partition with NTFS3
     if try_mount "$partition" "rw"; then
+        # Check for hibernation file first - NEW ADDITION
+        handle_hibernation_file "$partition"
+        HIBERNATION_EXIT_CODE=$?
+        
+        # If hibernation file handling failed but we want to continue anyway
+        if [ $HIBERNATION_EXIT_CODE -ne 0 ]; then
+            if [ "$USE_FORCE" -eq 1 ]; then
+                warning "Hibernation file handling failed, but continuing with --force option"
+            else
+                info "Hibernation file handling failed - this partition may not be accessible"
+                safe_unmount "$partition"
+                return 1
+            fi
+        fi
+        
         # Check for Windows directory structure
         if [ -d "$MOUNT_POINT/Windows" ]; then
             log "Found Windows directory"
@@ -319,6 +460,12 @@ perform_restoration() {
             fi
             return 1
         fi
+    fi
+    
+    # Check for hibernation file again in read-write mode - NEW ADDITION
+    if [ -f "$MOUNT_POINT/hiberfil.sys" ] && [ "$DELETE_HIBERFIL" -eq 0 ]; then
+        warning "Hibernation file still present. This may cause issues."
+        warning "Consider using --delete-hiberfil option"
     fi
     
     # Navigate to System32
@@ -540,11 +687,17 @@ perform_restoration() {
     echo -e "${YELLOW}2. No more command prompt bypass at login${NC}"
     echo -e "${YELLOW}3. Original sethc.exe functionality restored${NC}"
     echo -e "${YELLOW}4. System should boot and function normally${NC}"
+    if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+        echo -e "${YELLOW}5. Hibernation file was removed (cold boot required)${NC}"
+    fi
     echo ""
     echo -e "${CYAN}What was restored:${NC}"
     echo -e "${CYAN}- sethc.exe: Restored from backup${NC}"
     echo -e "${CYAN}- File permissions: Reset to normal${NC}"
     echo -e "${CYAN}- Temporary files: Cleaned up${NC}"
+    if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+        echo -e "${CYAN}- Hibernation file: Removed${NC}"
+    fi
     echo ""
     echo -e "${GREEN}The backup file (sethc.exe.backup) has been kept for reference.${NC}"
     echo -e "${GREEN}You can safely delete it if you no longer need it.${NC}"
@@ -647,6 +800,7 @@ if [ -z "$WINDOWS_PARTITION" ]; then
     echo -e "${YELLOW}3. System was already restored${NC}"
     echo -e "${YELLOW}4. Windows partitions are encrypted (BitLocker)${NC}"
     echo -e "${YELLOW}5. Try running with --force option: putadmin --force${NC}"
+    echo -e "${YELLOW}6. Try: putadmin --force --delete-hiberfil${NC}"
     exit 1
 fi
 
@@ -663,12 +817,20 @@ if [ "$USE_FORCE" -eq 1 ]; then
 else
     echo -e "${BLUE}Mount options: rw${NC}"
 fi
+if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+    echo -e "${YELLOW}Hibernation file: Will be deleted if found${NC}"
+else
+    echo -e "${BLUE}Hibernation file: Will be preserved${NC}"
+fi
 echo ""
 echo -e "${GREEN}What will be restored:${NC}"
 echo -e "${GREEN}- sethc.exe will be restored from backup${NC}"
 echo -e "${GREEN}- Normal sticky keys functionality will return${NC}"
 echo -e "${GREEN}- Command prompt bypass will be removed${NC}"
 echo -e "${GREEN}- Temporary files will be cleaned up${NC}"
+if [ "$DELETE_HIBERFIL" -eq 1 ]; then
+    echo -e "${GREEN}- Hibernation file will be removed if present${NC}"
+fi
 echo ""
 echo -e "${YELLOW}Continue with restoration? (Type 'YES' to proceed): ${NC}"
 read -r CONFIRM

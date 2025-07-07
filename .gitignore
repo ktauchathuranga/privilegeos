@@ -1,3 +1,4 @@
 busybox-1.36.1
 linux-6.15.3
-build/logs
+/build/logs/
+

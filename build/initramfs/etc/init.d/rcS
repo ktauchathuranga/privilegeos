@@ -38,7 +38,7 @@ echo -e "\e[1;34m                              |___/                 \e[0m"
 echo ""
 
 echo -e "\e[1mWelcome to PrivilegeOS!\e[0m"
-echo -e "\e[1mBuild date: Sun Jul  6 05:48:56 PM +0530 2025\e[0m"
+echo -e "\e[1mBuild date: Mon Jul  7 08:30:00 AM +0530 2025\e[0m"
 echo -e "\e[1mYou are running as: \e[32mROOT\e[0m"
 echo ""
 

@@ -394,6 +394,28 @@ check_windows_partition() {
     fi
 }
 
+show_legal_warning() {
+    echo -e "${RED}=============================================${NC}"
+    echo -e "${RED}            LEGAL WARNING                    ${NC}"
+    echo -e "${RED}=============================================${NC}"
+    echo -e "${YELLOW}This tool is for AUTHORIZED testing only!${NC}"
+    echo -e "${YELLOW}Unauthorized use may violate laws including:${NC}"
+    echo -e "${YELLOW}- Computer Fraud and Abuse Act (USA)${NC}"
+    echo -e "${YELLOW}- Computer Misuse Act (UK)${NC}"
+    echo -e "${YELLOW}- Criminal Code (Canada)${NC}"
+    echo -e "${YELLOW}- Local cybercrime laws${NC}"
+    echo ""
+    echo -e "${RED}Do you have WRITTEN AUTHORIZATION to test this system?${NC}"
+    echo -e "${YELLOW}Type 'I-HAVE-AUTHORIZATION' to continue: ${NC}"
+    read -r LEGAL_CONFIRM
+    
+    if [ "$LEGAL_CONFIRM" != "I-HAVE-AUTHORIZATION" ]; then
+        echo -e "${RED}Operation cancelled - No authorization confirmed${NC}"
+        echo -e "${YELLOW}Only use on systems you own or have explicit permission to test${NC}"
+        exit 1
+    fi
+}
+
 # Function to perform the sticky keys bypass
 perform_bypass() {
     local partition="$1"
@@ -701,6 +723,9 @@ perform_bypass() {
 }
 
 # Main execution starts here...
+# Shwoing legal warning
+#show_legal_warning
+
 log "Starting Windows partition scan..."
 
 # Get all partitions from /proc/partitions
