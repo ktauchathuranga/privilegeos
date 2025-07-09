@@ -152,6 +152,122 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 4. Set partition scheme to GPT
 5. Click "START"
 
+## 💾 USB Writing Tool
+
+PrivilegeOS includes a dedicated USB writing tool (`boot.sh`) for easy image deployment to USB drives.
+
+### Using boot.sh
+
+The `boot.sh` script provides a safe and convenient way to write PrivilegeOS images to USB drives with built-in safety checks and verification.
+
+#### Basic Usage
+
+```bash
+# Interactive mode (will prompt for device selection)
+./boot.sh
+
+# List available block devices
+./boot.sh --list
+
+# Write to specific device
+./boot.sh --device sdb
+
+# Automated mode (skip confirmations)
+./boot.sh --device sdb --yes
+
+# Use custom image file
+./boot.sh --image /path/to/custom.img --device sdb
+
+# Use custom OS name for display
+./boot.sh --name MyCustomOS --device sdc
+```
+
+#### Command Line Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `-h, --help` | Show help message and exit | `--help` |
+| `-i, --image FILE` | Specify disk image file | `--image custom.img` |
+| `-n, --name NAME` | Set OS name for display | `--name "Custom PrivilegeOS"` |
+| `-y, --yes` | Skip confirmation prompts | `--yes` |
+| `-d, --device DEVICE` | Specify target device | `--device sdb` |
+| `-l, --list` | List available block devices | `--list` |
+
+#### Safety Features
+
+The `boot.sh` script includes comprehensive safety measures:
+
+- **System Drive Protection**: Automatically detects and prevents writing to system drives
+- **Device Validation**: Verifies device existence and type before writing
+- **Mount Check**: Automatically unmounts any mounted partitions on target device
+- **Size Verification**: Ensures USB drive is large enough for the image
+- **Confirmation Prompts**: Requires explicit confirmation before destructive operations
+- **Write Verification**: Performs basic verification after writing
+
+#### Example Usage Sessions
+
+**Interactive Mode:**
+```bash
+$ ./boot.sh
+
+PrivilegeOS USB Writer
+Image: build/PrivilegeOS.img
+
+Available drives:
+NAME    SIZE MODEL             VENDOR   TYPE
+sdb     32G  Extreme           SanDisk  disk
+sdc     64G  DataTraveler_3.0  Kingston disk
+
+Enter the device name to write to (e.g., sdb, NOT sdb1): sdb
+
+WARNING: YOU ARE ABOUT TO OVERWRITE /dev/sdb
+ALL DATA ON THIS DEVICE (32G) WILL BE LOST!
+Device: /dev/sdb
+Image file: build/PrivilegeOS.img (512M)
+OS: PrivilegeOS
+
+Type 'YES' to continue: YES
+
+Writing image to /dev/sdb...
+512+0 records in
+512+0 records out
+536870912 bytes (537 MB, 512 MiB) copied, 45.2s, 11.9 MB/s
+
+SUCCESS: PrivilegeOS has been written to /dev/sdb
+You can now boot your computer from this USB drive.
+```
+
+**Automated Mode:**
+```bash
+# Write to sdb without prompts
+./boot.sh --device sdb --yes
+
+# Use custom image and skip prompts
+./boot.sh --image /path/to/my-privilegeos.img --device sdc --yes
+```
+
+#### Error Handling
+
+The script provides clear error messages for common issues:
+
+```bash
+# Device doesn't exist
+ERROR: Device /dev/sdz does not exist or is not a block device.
+
+# USB drive too small
+ERROR: USB drive is too small (16G) for the image (32G).
+
+# Trying to write to system drive
+ERROR: You're trying to write to the system's boot disk! Operation aborted.
+
+# Image file not found
+ERROR: Disk image not found: missing.img
+```
+
+#### Log Files
+
+All operations are logged to `build/logs/boot.log` for troubleshooting and audit purposes.
+
 ## 📖 Usage
 
 ### First Boot
