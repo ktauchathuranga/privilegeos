@@ -1068,7 +1068,6 @@ main() {
     echo ""
 
     check_dependencies
-
     setup_workspace
     download_sources
     build_busybox
