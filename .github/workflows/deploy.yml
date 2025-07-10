@@ -1,0 +1,192 @@
+name: Build and Release PrivilegeOS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-version-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history to compare versions
+
+    - name: Read current version
+      id: current_version
+      run: |
+        if [ -f version.json ]; then
+          VERSION=$(jq -r '.version' version.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+        else
+          echo "version=0.0.0" >> $GITHUB_OUTPUT
+          echo "No version.json found, using 0.0.0"
+        fi
+
+    - name: Get previous version
+      id: previous_version
+      run: |
+        git checkout HEAD~1 -- version.json 2>/dev/null || echo '{"version": "0.0.0"}' > version.json.prev
+        if [ -f version.json ]; then
+          mv version.json version.json.prev
+        fi
+        git checkout HEAD -- version.json 2>/dev/null || true
+
+        if [ -f version.json.prev ]; then
+          PREV_VERSION=$(jq -r '.version' version.json.prev)
+          echo "previous_version=$PREV_VERSION" >> $GITHUB_OUTPUT
+          echo "Previous version: $PREV_VERSION"
+        else
+          echo "previous_version=0.0.0" >> $GITHUB_OUTPUT
+          echo "No previous version found, using 0.0.0"
+        fi
+
+    - name: Check if version changed
+      id: version_check
+      run: |
+        CURRENT="${{ steps.current_version.outputs.version }}"
+        PREVIOUS="${{ steps.previous_version.outputs.previous_version }}"
+
+        if [ "$CURRENT" != "$PREVIOUS" ]; then
+          echo "version_changed=true" >> $GITHUB_OUTPUT
+          echo "Version changed from $PREVIOUS to $CURRENT"
+        else
+          echo "version_changed=false" >> $GITHUB_OUTPUT
+          echo "Version unchanged: $CURRENT"
+        fi
+
+    - name: Check if release already exists
+      id: release_check
+      if: steps.version_check.outputs.version_changed == 'true'
+      run: |
+        VERSION="${{ steps.current_version.outputs.version }}"
+        TAG="v$VERSION"
+
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "release_exists=true" >> $GITHUB_OUTPUT
+          echo "Release $TAG already exists"
+        else
+          echo "release_exists=false" >> $GITHUB_OUTPUT
+          echo "Release $TAG does not exist"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install build dependencies
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc \
+          make \
+          bc \
+          qemu-system-x86 \
+          parted \
+          dosfstools \
+          wget \
+          xz-utils \
+          tar \
+          libncurses-dev \
+          libssl-dev \
+          libelf-dev \
+          flex \
+          bison \
+          ovmf \
+          jq
+
+    - name: Make build script executable
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: chmod +x build.sh
+
+    - name: Verify required scripts are present
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        if [ ! -x scripts/getdrives.sh ]; then
+          echo "Required script 'scripts/getdrives.sh' is missing or not executable"
+          exit 1
+        fi
+
+    - name: Build PrivilegeOS
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        ./build.sh --clean --skip-qemu --size 64 --threads $(nproc)
+      timeout-minutes: 120
+
+    - name: Verify build output
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        if [ -f "build/PrivilegeOS.img" ]; then
+          echo "Build successful: PrivilegeOS.img created"
+          ls -lh build/PrivilegeOS.img
+          IMG_SIZE=$(du -h build/PrivilegeOS.img | cut -f1)
+          echo "IMG_SIZE=$IMG_SIZE" >> $GITHUB_ENV
+        else
+          echo "Build failed: PrivilegeOS.img not found"
+          exit 1
+        fi
+
+    - name: Generate release notes
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        VERSION="${{ steps.current_version.outputs.version }}"
+        cat > release_notes.md << EOF
+        PrivilegeOS v$VERSION
+
+        Download \`PrivilegeOS.img\` and write to USB drive. Boot with UEFI enabled.
+
+        Image size: $IMG_SIZE
+        EOF
+
+    - name: Create Release
+      if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
+      run: |
+        VERSION="${{ steps.current_version.outputs.version }}"
+        TAG="v$VERSION"
+        gh release create "$TAG" \
+          --title "PrivilegeOS $VERSION" \
+          --notes-file release_notes.md \
+          --draft=false \
+          --prerelease=false \
+          build/PrivilegeOS.img
+        echo "Release $TAG created successfully"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build logs as artifacts
+      if: steps.version_check.outputs.version_changed == 'true' && (success() || failure())
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ steps.current_version.outputs.version }}
+        path: |
+          build/logs/
+          release_notes.md
+        retention-days: 30
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Current Version**: ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Previous Version**: ${{ steps.previous_version.outputs.previous_version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version Changed**: ${{ steps.version_check.outputs.version_changed }}" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.version_check.outputs.version_changed }}" == "true" ]; then
+          if [ "${{ steps.release_check.outputs.release_exists }}" == "true" ]; then
+            echo "- **Status**: ⚠️ Release already exists" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ✅ New release created" >> $GITHUB_STEP_SUMMARY
+            echo "- **Image Size**: ${{ env.IMG_SIZE }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Tag**: v${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "- **Status**: ℹ️ No version change, skipping build" >> $GITHUB_STEP_SUMMARY
+        fi
+
