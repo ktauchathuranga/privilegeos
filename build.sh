@@ -858,10 +858,6 @@ build_kernel() {
         
         ./scripts/config --disable CONFIG_SOUND
         ./scripts/config --disable CONFIG_SND
-        ./scripts/config --disable CONFIG_DEBUG_INFO
-        ./scripts/config --disable CONFIG_DEBUG_KERNEL
-        ./scripts/config --disable CONFIG_KALLSYMS
-        ./scripts/config --disable CONFIG_PRINTK
         
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
