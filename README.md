@@ -68,7 +68,7 @@ This tool helps security professionals and students understand:
 PrivilegeOS is a minimal, bootable Linux distribution built specifically for penetration testing scenarios involving Windows systems. It features native NTFS3 kernel support, custom penetration testing tools, and specialized utilities for Windows admin access bypass techniques.
 
 **Key Characteristics:**
-- **Lightweight**: ~512MB bootable image
+- **Lightweight**: ~64MB bootable image
 - **Fast Boot**: Boots in under 30 seconds
 - **No Installation Required**: Runs entirely from USB/CD
 - **Root Access**: Automatic root login
@@ -223,15 +223,15 @@ Enter the device name to write to (e.g., sdb, NOT sdb1): sdb
 WARNING: YOU ARE ABOUT TO OVERWRITE /dev/sdb
 ALL DATA ON THIS DEVICE (32G) WILL BE LOST!
 Device: /dev/sdb
-Image file: build/PrivilegeOS.img (512M)
+Image file: build/PrivilegeOS.img (35M)
 OS: PrivilegeOS
 
 Type 'YES' to continue: YES
 
 Writing image to /dev/sdb...
-512+0 records in
-512+0 records out
-536870912 bytes (537 MB, 512 MiB) copied, 45.2s, 11.9 MB/s
+35+0 records in
+35+0 records out
+536870912 bytes (36 MB, 35 MiB) copied, 45.2s, 11.9 MB/s
 
 SUCCESS: PrivilegeOS has been written to /dev/sdb
 You can now boot your computer from this USB drive.
@@ -1004,8 +1004,8 @@ Licensed under GNU General Public License v2.0
 #### Additional Components
 All other components maintain their respective licenses. See individual source files for details.
 
-**Project Repository**: https://github.com/ktauchathuranga/privilegeos  
-**Issue Tracker**: https://github.com/ktauchathuranga/privilegeos/issues  
+**Project Repository**: https://github.com/ktauchathuranga/privilegeos
+**Issue Tracker**: https://github.com/ktauchathuranga/privilegeos/issues
 
 ---
 

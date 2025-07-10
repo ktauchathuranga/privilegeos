@@ -3,7 +3,7 @@
 # putadmin.sh - Windows Admin Access Restoration Script for PrivilegeOS
 # This script finds Windows partitions and restores the original sticky keys functionality
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-07 02:35:12 UTC
+# Updated: 2025-07-10 04:01:30 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -56,7 +56,7 @@ show_help() {
     echo ""
     echo "Note: This script restores Windows system files that were modified by getadmin:"
     echo "  - Restores original sethc.exe from backup"
-    echo "  - Restores original cmd.exe from backup"
+    echo "  - Verifies cmd.exe is in correct state"
     echo "  - Removes temporary files created during bypass"
     echo "  - Returns Windows to normal login functionality"
     echo ""
@@ -107,7 +107,7 @@ if [ "$DELETE_HIBERFIL" -eq 1 ]; then
 else
     echo -e "${BLUE}Delete hiberfil.sys: DISABLED (use --delete-hiberfil to enable)${NC}"
 fi
-echo -e "${BLUE}Updated: 2025-07-07 02:35:12 UTC${NC}"
+echo -e "${BLUE}Updated: 2025-07-10 04:01:30 UTC${NC}"
 echo -e "${BLUE}User: ktauchathuranga${NC}"
 echo ""
 
@@ -193,7 +193,7 @@ safe_unmount() {
     return 0
 }
 
-# Function to handle hibernation file - NEW ADDITION
+# Function to handle hibernation file
 handle_hibernation_file() {
     local partition="$1"
     
@@ -346,7 +346,7 @@ check_modified_windows_partition() {
     
     # Try to mount the partition with NTFS3
     if try_mount "$partition" "rw"; then
-        # Check for hibernation file first - NEW ADDITION
+        # Check for hibernation file first
         handle_hibernation_file "$partition"
         HIBERNATION_EXIT_CODE=$?
         
@@ -377,6 +377,7 @@ check_modified_windows_partition() {
                     ls -la "$MOUNT_POINT/Windows/System32/sethc.exe" 2>/dev/null
                     ls -la "$MOUNT_POINT/Windows/System32/cmd.exe" 2>/dev/null
                     ls -la "$MOUNT_POINT/Windows/System32/sethc.exe.backup" 2>/dev/null
+                    ls -la "$MOUNT_POINT/Windows/System32/cmd.exe.backup" 2>/dev/null
                     
                     # Check if files were actually modified (compare sizes)
                     if [ -f "$MOUNT_POINT/Windows/System32/sethc.exe" ] && [ -f "$MOUNT_POINT/Windows/System32/cmd.exe" ]; then
@@ -395,7 +396,7 @@ check_modified_windows_partition() {
                             return 0
                         elif [ "$SETHC_SIZE" -eq "$BACKUP_SIZE" ]; then
                             info "Files appear to already be restored (sethc.exe matches backup)"
-                            info "System may already be in normal state"
+                            info "System may already be in normal state, but will verify"
                             return 0
                         else
                             warning "File sizes don't match expected pattern, but backup exists"
@@ -462,7 +463,7 @@ perform_restoration() {
         fi
     fi
     
-    # Check for hibernation file again in read-write mode - NEW ADDITION
+    # Check for hibernation file again in read-write mode
     if [ -f "$MOUNT_POINT/hiberfil.sys" ] && [ "$DELETE_HIBERFIL" -eq 0 ]; then
         warning "Hibernation file still present. This may cause issues."
         warning "Consider using --delete-hiberfil option"
@@ -480,7 +481,7 @@ perform_restoration() {
     
     # Show current file status
     log "Current file status before restoration:"
-    ls -la sethc.exe cmd.exe sethc.exe.backup 2>/dev/null || {
+    ls -la sethc.exe cmd.exe sethc.exe.backup cmd.exe.backup 2>/dev/null || {
         error "Could not list files!"
         safe_unmount "$partition"
         return 1
@@ -509,41 +510,82 @@ perform_restoration() {
     
     BACKUP_SIZE=$(stat -c%s "sethc.exe.backup" 2>/dev/null)
     
+    # Check for cmd.exe backup
+    if [ -f "cmd.exe.backup" ]; then
+        CMD_BACKUP_SIZE=$(stat -c%s "cmd.exe.backup" 2>/dev/null)
+        log "cmd.exe.backup found with size: $CMD_BACKUP_SIZE bytes"
+    else
+        CMD_BACKUP_SIZE=0
+        info "No cmd.exe.backup found (this is normal with the corrected getadmin)"
+    fi
+    
     log "Current file sizes:"
     log "- sethc.exe: $CURRENT_SETHC_SIZE bytes"
     log "- cmd.exe: $CURRENT_CMD_SIZE bytes"
     log "- sethc.exe.backup: $BACKUP_SIZE bytes"
+    if [ "$CMD_BACKUP_SIZE" -gt 0 ]; then
+        log "- cmd.exe.backup: $CMD_BACKUP_SIZE bytes"
+    fi
     
     # Check if restoration is needed
     if [ "$CURRENT_SETHC_SIZE" -eq "$BACKUP_SIZE" ] && [ -f "sethc.exe" ]; then
-        warning "sethc.exe already matches backup size"
-        warning "System may already be restored, but will proceed anyway"
+        success "sethc.exe already matches backup size"
+        success "System appears to already be restored!"
+        
+        # Verify cmd.exe is in expected state
+        if [ "$CMD_BACKUP_SIZE" -gt 0 ]; then
+            if [ "$CURRENT_CMD_SIZE" -eq "$CMD_BACKUP_SIZE" ]; then
+                success "cmd.exe also matches its backup - complete restoration verified"
+            else
+                warning "cmd.exe size doesn't match backup, but may be normal"
+            fi
+        else
+            success "cmd.exe appears to be in normal state (no backup needed)"
+        fi
+        
+        log "Proceeding with verification and cleanup anyway..."
+    elif [ "$CURRENT_SETHC_SIZE" -eq "$CURRENT_CMD_SIZE" ] && [ "$CURRENT_SETHC_SIZE" -ne "$BACKUP_SIZE" ]; then
+        warning "sethc.exe appears to be replaced with cmd.exe (bypass active)"
+        warning "Proceeding with restoration..."
+    else
+        info "File sizes indicate mixed state, proceeding with restoration..."
     fi
     
     # Force sync before operations
     sync
     sleep 2
     
-    # Perform the restoration with extensive verification
-    log "Performing file restoration with verification..."
-    
-    # Step 1: Remove current sethc.exe if it exists
+    # Step 1: Remove current sethc.exe if it exists and differs from backup
     if [ -f "sethc.exe" ]; then
         log "Step 1: Removing current sethc.exe..."
+        
+        # Verify the file exists before removal
+        if [ ! -f "sethc.exe" ]; then
+            error "sethc.exe disappeared before removal!"
+            safe_unmount "$partition"
+            return 1
+        fi
+        
         if rm "sethc.exe"; then
-            success "Current sethc.exe removed"
-            # Verify removal
+            # Force sync to ensure deletion is committed
+            sync
+            sleep 1
+            
+            # Verify removal was successful
             if [ ! -f "sethc.exe" ]; then
+                success "Current sethc.exe removed successfully"
                 success "Verification: sethc.exe no longer exists"
             else
-                error "Verification failed: sethc.exe still exists!"
+                error "Verification failed: sethc.exe still exists after removal!"
+                log "File still present:"
+                ls -la "sethc.exe" 2>/dev/null
                 safe_unmount "$partition"
                 return 1
             fi
-            sync
-            sleep 1
         else
             error "Failed to remove current sethc.exe!"
+            log "File permissions:"
+            ls -la "sethc.exe" 2>/dev/null
             safe_unmount "$partition"
             return 1
         fi
@@ -551,66 +593,130 @@ perform_restoration() {
         warning "sethc.exe not found, will create it from backup"
     fi
     
-    # Step 2: Restore sethc.exe from backup
+    # Step 2: Restore sethc.exe from backup with comprehensive verification
     log "Step 2: Restoring sethc.exe from backup..."
+    
+    # Verify backup exists and is valid
+    if [ ! -f "sethc.exe.backup" ]; then
+        error "Backup file not found during restoration!"
+        safe_unmount "$partition"
+        return 1
+    fi
+    
+    BACKUP_SIZE=$(stat -c%s "sethc.exe.backup" 2>/dev/null)
+    if [ "$BACKUP_SIZE" -eq 0 ]; then
+        error "Backup file is empty (0 bytes)!"
+        safe_unmount "$partition"
+        return 1
+    fi
+    
+    log "Backup file size: $BACKUP_SIZE bytes"
+    
     if cp "sethc.exe.backup" "sethc.exe"; then
-        success "sethc.exe restored from backup"
-        # Verify restoration
+        # Force sync to ensure copy is committed
+        sync
+        sleep 1
+        
+        # Comprehensive verification
         if [ -f "sethc.exe" ]; then
-            success "Verification: sethc.exe exists"
+            success "sethc.exe restored from backup"
+            
+            # Verify size matches backup
             NEW_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
+            
             if [ "$NEW_SETHC_SIZE" -eq "$BACKUP_SIZE" ]; then
-                success "Verification: sethc.exe size matches backup ($NEW_SETHC_SIZE bytes)"
+                success "Size verification: sethc.exe matches backup ($NEW_SETHC_SIZE bytes)"
+                
+                # Verify content integrity
+                if cmp "sethc.exe.backup" "sethc.exe" >/dev/null 2>&1; then
+                    success "Content verification: sethc.exe is identical to backup"
+                    success "RESTORATION SUCCESSFUL: Sticky Keys functionality restored"
+                else
+                    error "Content verification failed: Restored file differs from backup!"
+                    safe_unmount "$partition"
+                    return 1
+                fi
+                
+                # Verify file permissions
+                RESTORED_PERMS=$(stat -c%a "sethc.exe" 2>/dev/null)
+                log "Restored sethc.exe permissions: $RESTORED_PERMS"
+                
+                # Set appropriate permissions if needed
+                if [ "$RESTORED_PERMS" != "755" ]; then
+                    log "Setting proper permissions..."
+                    if chmod 755 "sethc.exe"; then
+                        success "Permissions set to 755"
+                    else
+                        warning "Could not set permissions (may still work)"
+                    fi
+                fi
+                
             else
-                error "Verification failed: sethc.exe size mismatch!"
+                error "Size verification failed: Restored file size mismatch!"
                 error "Expected: $BACKUP_SIZE bytes, Got: $NEW_SETHC_SIZE bytes"
                 safe_unmount "$partition"
                 return 1
             fi
         else
-            error "Verification failed: sethc.exe missing after restoration!"
+            error "Restoration verification failed: sethc.exe not found after restoration!"
             safe_unmount "$partition"
             return 1
         fi
-        sync
-        sleep 1
     else
         error "Failed to restore sethc.exe from backup!"
         safe_unmount "$partition"
         return 1
     fi
     
-    # Step 3: Check and fix cmd.exe if needed
-    log "Step 3: Checking cmd.exe..."
-    if [ -f "cmd.exe" ]; then
-        CMD_SIZE_AFTER=$(stat -c%s "cmd.exe" 2>/dev/null)
-        if [ "$CMD_SIZE_AFTER" -eq "$BACKUP_SIZE" ]; then
-            warning "cmd.exe has same size as original sethc.exe"
-            warning "This suggests cmd.exe was replaced during bypass"
+    # Step 3: Check and restore cmd.exe if needed
+    log "Step 3: Checking cmd.exe restoration..."
+    if [ -f "cmd.exe.backup" ]; then
+        log "Found cmd.exe.backup, checking if restoration is needed..."
+        
+        CURRENT_CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+        BACKUP_CMD_SIZE=$(stat -c%s "cmd.exe.backup" 2>/dev/null)
+        
+        log "Current cmd.exe size: $CURRENT_CMD_SIZE bytes"
+        log "cmd.exe backup size: $BACKUP_CMD_SIZE bytes"
+        
+        if [ "$CURRENT_CMD_SIZE" -ne "$BACKUP_CMD_SIZE" ]; then
+            log "cmd.exe appears to be modified, restoring from backup..."
             
-            # Look for cmd.exe backup or try to restore from system
-            if [ -f "cmd.exe.backup" ]; then
-                log "Found cmd.exe.backup, restoring..."
+            # Remove current cmd.exe
+            if rm "cmd.exe"; then
+                sync; sleep 1
+                
+                # Restore from backup
                 if cp "cmd.exe.backup" "cmd.exe"; then
-                    success "cmd.exe restored from backup"
-                    sync
-                    sleep 1
+                    sync; sleep 1
+                    
+                    # Verify restoration
+                    RESTORED_CMD_SIZE=$(stat -c%s "cmd.exe" 2>/dev/null)
+                    if [ "$RESTORED_CMD_SIZE" -eq "$BACKUP_CMD_SIZE" ]; then
+                        success "cmd.exe restored from backup ($RESTORED_CMD_SIZE bytes)"
+                        
+                        # Content verification
+                        if cmp "cmd.exe.backup" "cmd.exe" >/dev/null 2>&1; then
+                            success "cmd.exe content verification: Identical to backup"
+                        else
+                            warning "cmd.exe content verification failed (may still work)"
+                        fi
+                    else
+                        warning "cmd.exe restoration size mismatch"
+                        warning "Expected: $BACKUP_CMD_SIZE bytes, Got: $RESTORED_CMD_SIZE bytes"
+                    fi
                 else
                     warning "Failed to restore cmd.exe from backup"
                 fi
             else
-                warning "No cmd.exe.backup found"
-                warning "cmd.exe may still be the original sethc.exe"
-                warning "Windows should still function normally"
+                warning "Failed to remove current cmd.exe for restoration"
             fi
         else
-            success "cmd.exe appears to be normal (different size from sethc backup)"
+            success "cmd.exe appears to be unchanged (same size as backup)"
         fi
     else
-        error "cmd.exe is missing!"
-        error "This is a serious problem - Windows will not function properly"
-        safe_unmount "$partition"
-        return 1
+        info "No cmd.exe.backup found - cmd.exe was likely not modified"
+        success "cmd.exe appears to be the original file"
     fi
     
     # Step 4: Set proper permissions
@@ -649,7 +755,7 @@ perform_restoration() {
     # Final verification
     log "Performing final verification..."
     log "Final file listing:"
-    ls -la sethc.exe cmd.exe sethc.exe.backup 2>/dev/null
+    ls -la sethc.exe cmd.exe sethc.exe.backup cmd.exe.backup 2>/dev/null
     
     # Check final file sizes
     FINAL_SETHC_SIZE=$(stat -c%s "sethc.exe" 2>/dev/null)
@@ -699,8 +805,8 @@ perform_restoration() {
         echo -e "${CYAN}- Hibernation file: Removed${NC}"
     fi
     echo ""
-    echo -e "${GREEN}The backup file (sethc.exe.backup) has been kept for reference.${NC}"
-    echo -e "${GREEN}You can safely delete it if you no longer need it.${NC}"
+    echo -e "${GREEN}The backup files have been kept for reference.${NC}"
+    echo -e "${GREEN}You can safely delete them if you no longer need them.${NC}"
     echo ""
     
     # Final unmount - go back to root directory first
@@ -708,6 +814,73 @@ perform_restoration() {
     cd / || true
     safe_unmount "$partition"
     return 0
+}
+
+# Function to handle post-completion actions
+handle_completion() {
+    # Cleanup first
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
+    
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}          POST-COMPLETION OPTIONS           ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${GREEN}The Windows system has been successfully restored!${NC}"
+    echo ""
+    echo -e "${YELLOW}What was accomplished:${NC}"
+    echo -e "${YELLOW}1. Windows system files have been restored to normal${NC}"
+    echo -e "${YELLOW}2. Sticky Keys functionality is back to normal${NC}"
+    echo -e "${YELLOW}3. Admin bypass has been completely removed${NC}"
+    echo -e "${YELLOW}4. System is ready for normal Windows boot${NC}"
+    echo ""
+    echo -e "${YELLOW}Next steps:${NC}"
+    echo -e "${YELLOW}1. You can now power off PrivilegeOS${NC}"
+    echo -e "${YELLOW}2. Boot into Windows normally${NC}"
+    echo -e "${YELLOW}3. Verify that Shift x5 shows sticky keys dialog (not CMD)${NC}"
+    echo -e "${YELLOW}4. Windows should function completely normally${NC}"
+    echo ""
+    echo -e "${CYAN}Would you like to power off the system now?${NC}"
+    echo -e "${BLUE}Press ENTER to power off, or type 'n'/'no' to exit to shell: ${NC}"
+    
+    # Read user input
+    read -r POWER_CHOICE
+    
+    case "$POWER_CHOICE" in
+        ""|"y"|"Y"|"yes"|"YES"|"Yes")
+            echo ""
+            echo -e "${GREEN}Powering off the system...${NC}"
+            echo -e "${YELLOW}After shutdown, remove the USB drive and boot Windows normally.${NC}"
+            echo -e "${YELLOW}Windows should now function with normal login security.${NC}"
+            echo ""
+            
+            # Give user a moment to read the message
+            sleep 3
+            
+            # Sync and power off
+            sync
+            sync
+            poweroff
+            ;;
+        "n"|"N"|"no"|"NO"|"No")
+            echo ""
+            echo -e "${GREEN}Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+        *)
+            echo ""
+            echo -e "${YELLOW}Invalid choice. Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+    esac
 }
 
 # Main execution starts here...
@@ -801,6 +974,8 @@ if [ -z "$WINDOWS_PARTITION" ]; then
     echo -e "${YELLOW}4. Windows partitions are encrypted (BitLocker)${NC}"
     echo -e "${YELLOW}5. Try running with --force option: putadmin --force${NC}"
     echo -e "${YELLOW}6. Try: putadmin --force --delete-hiberfil${NC}"
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
 
@@ -838,24 +1013,22 @@ read -r CONFIRM
 if [ "$CONFIRM" != "YES" ]; then
     warning "Restoration cancelled by user"
     safe_unmount
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 0
 fi
 
 # Perform the restoration
 if perform_restoration "$WINDOWS_PARTITION"; then
     success "Windows restoration operation completed!"
-    echo ""
-    echo -e "${GREEN}Windows has been restored to normal functionality.${NC}"
-    echo -e "${GREEN}You can now boot Windows normally.${NC}"
+    
+    # Handle post-completion actions (power off or continue)
+    handle_completion
+    
 else
     error "Failed to perform restoration!"
+    # Cleanup on failure
+    safe_unmount
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
-
-# Cleanup
-rmdir "$MOUNT_POINT" 2>/dev/null || true
-
-echo ""
-echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
-echo -e "${CYAN}=============================================${NC}"

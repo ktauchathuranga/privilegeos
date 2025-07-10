@@ -14,7 +14,7 @@ KERNEL_VER="6.15.3"
 BUSYBOX_VER="1.36.1"
 THREADS=$(nproc)
 MEMORY="2G"
-IMAGE_SIZE="512"  # In MB
+IMAGE_SIZE="35"  # In MB
 
 # Source directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -463,12 +463,12 @@ echo "root:x:0:" > /etc/group
 chmod 644 /etc/passwd /etc/group
 
 echo ""
-echo -e "\e[1;34m  ____       _       _ _                  ___  ____  \e[0m"
-echo -e "\e[1;34m |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___| \e[0m"
-echo -e "\e[1;34m | |_) | '__| \ \ / / | |/ _ \/ _\ |/ _ \ | | \___ \ \e[0m"
-echo -e "\e[1;34m |  __/| |  | |\ V /| | |  __/ (_| |  __/ |_| |___) |\e[0m"
-echo -e "\e[1;34m |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/ \e[0m"
-echo -e "\e[1;34m                              |___/                 \e[0m"
+echo -e "\e[1;35m  ____       _       _ _                  ___  ____  \e[0m"
+echo -e "\e[1;35m |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___| \e[0m"
+echo -e "\e[1;35m | |_) | '__| \ \ / / | |/ _ \/ _\ |/ _ \ | | \___ \ \e[0m"
+echo -e "\e[1;35m |  __/| |  | |\ V /| | |  __/ (_| |  __/ |_| |___) |\e[0m"
+echo -e "\e[1;35m |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/ \e[0m"
+echo -e "\e[1;35m                              |___/                  \e[0m"
 echo ""
 
 echo -e "\e[1mWelcome to ${OS_NAME}!\e[0m"
@@ -802,12 +802,6 @@ build_kernel() {
         ./scripts/config --disable CONFIG_FUSE_FS
         ./scripts/config --disable CONFIG_CUSE
         
-        ./scripts/config --enable CONFIG_SND
-        ./scripts/config --enable CONFIG_SND_HDA_INTEL
-        ./scripts/config --enable CONFIG_SND_HDA_CODEC_REALTEK
-        ./scripts/config --enable CONFIG_SND_HDA_CODEC_HDMI
-        ./scripts/config --enable CONFIG_SND_USB_AUDIO
-        
         ./scripts/config --enable CONFIG_ATA
         ./scripts/config --enable CONFIG_SATA_AHCI
         ./scripts/config --enable CONFIG_SCSI
@@ -861,6 +855,9 @@ build_kernel() {
         ./scripts/config --set-str CONFIG_CMDLINE "console=tty0 console=ttyS0"
         
         ./scripts/config --enable CONFIG_DRM_KMS_HELPER
+        
+        ./scripts/config --disable CONFIG_SOUND
+        ./scripts/config --disable CONFIG_SND
         
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
@@ -1068,7 +1065,6 @@ main() {
     echo ""
 
     check_dependencies
-
     setup_workspace
     download_sources
     build_busybox
