@@ -31,6 +31,7 @@ LOG_DIR="${BUILD_DIR}/logs"
 
 # --- Variables for tracking state ---
 LOOP_DEV=""
+SKIP_DEPS=0
 
 # --- Output formatting ---
 RED='\033[0;31m'
@@ -108,11 +109,13 @@ Options:
   --skip-qemu               Skip QEMU testing
   --kernel-config FILE      Use custom kernel config file
   --busybox-config FILE     Use custom BusyBox config file
+  -d, --skip-deps           Skip dependency check
 
 Examples:
   $0 --clean --name MyOS --kernel 6.15.3 --size 1024
   $0 --qemu-only --threads 4
   $0 --busybox-config my_busybox.config --kernel-config my_kernel.config
+  $0 --skip-deps
 
 Note: This version uses the kernel NTFS3 driver for native NTFS support.
 EOF
@@ -170,6 +173,10 @@ parse_arguments() {
             --busybox-config)
                 CUSTOM_BUSYBOX_CONFIG="$2"
                 shift 2
+                ;;
+            -d|--skip-deps)
+                SKIP_DEPS=1
+                shift
                 ;;
             *)
                 error "Unknown option: $1"
@@ -1064,7 +1071,11 @@ main() {
     echo -e "${BLUE}Custom scripts directory: ${CUSTOM_SCRIPTS_DIR}${NC}"
     echo ""
 
-    check_dependencies
+    if [ "${SKIP_DEPS:-0}" -ne 1 ]; then
+        check_dependencies
+    else
+        log "Skipping dependency check as requested."
+    fi
     setup_workspace
     download_sources
     build_busybox
@@ -1128,3 +1139,4 @@ main() {
 }
 
 main "$@"
+

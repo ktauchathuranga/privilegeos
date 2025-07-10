@@ -87,7 +87,6 @@ jobs:
           gcc \
           make \
           bc \
-          qemu-system-x86 \
           parted \
           dosfstools \
           wget \
@@ -98,7 +97,6 @@ jobs:
           libelf-dev \
           flex \
           bison \
-          ovmf \
           jq
 
     - name: Make build script executable
@@ -109,7 +107,7 @@ jobs:
       if: steps.version_check.outputs.version_changed == 'true' && steps.release_check.outputs.release_exists == 'false'
       run: |
         export DEBIAN_FRONTEND=noninteractive
-        ./build.sh --clean --skip-qemu --size 64 --threads $(nproc)
+        ./build.sh --clean --skip-qemu --size 64 --threads $(nproc) --skip-deps
       timeout-minutes: 120
 
     - name: Verify build output
