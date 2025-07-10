@@ -802,12 +802,6 @@ build_kernel() {
         ./scripts/config --disable CONFIG_FUSE_FS
         ./scripts/config --disable CONFIG_CUSE
         
-        ./scripts/config --enable CONFIG_SND
-        ./scripts/config --enable CONFIG_SND_HDA_INTEL
-        ./scripts/config --enable CONFIG_SND_HDA_CODEC_REALTEK
-        ./scripts/config --enable CONFIG_SND_HDA_CODEC_HDMI
-        ./scripts/config --enable CONFIG_SND_USB_AUDIO
-        
         ./scripts/config --enable CONFIG_ATA
         ./scripts/config --enable CONFIG_SATA_AHCI
         ./scripts/config --enable CONFIG_SCSI
@@ -861,6 +855,13 @@ build_kernel() {
         ./scripts/config --set-str CONFIG_CMDLINE "console=tty0 console=ttyS0"
         
         ./scripts/config --enable CONFIG_DRM_KMS_HELPER
+        
+        ./scripts/config --disable CONFIG_SOUND
+        ./scripts/config --disable CONFIG_SND
+        ./scripts/config --disable CONFIG_DEBUG_INFO
+        ./scripts/config --disable CONFIG_DEBUG_KERNEL
+        ./scripts/config --disable CONFIG_KALLSYMS
+        ./scripts/config --disable CONFIG_PRINTK
         
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
