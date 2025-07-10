@@ -68,7 +68,7 @@ This tool helps security professionals and students understand:
 PrivilegeOS is a minimal, bootable Linux distribution built specifically for penetration testing scenarios involving Windows systems. It features native NTFS3 kernel support, custom penetration testing tools, and specialized utilities for Windows admin access bypass techniques.
 
 **Key Characteristics:**
-- **Lightweight**: ~64MB bootable image
+- **Lightweight**: ~35MB bootable image
 - **Fast Boot**: Boots in under 30 seconds
 - **No Installation Required**: Runs entirely from USB/CD
 - **Root Access**: Automatic root login
