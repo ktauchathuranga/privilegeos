@@ -3,7 +3,7 @@
 # putadmin.sh - Windows Admin Access Restoration Script for PrivilegeOS
 # This script finds Windows partitions and restores the original sticky keys functionality
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-07 02:35:12 UTC
+# Updated: 2025-07-10 03:22:40 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -107,7 +107,7 @@ if [ "$DELETE_HIBERFIL" -eq 1 ]; then
 else
     echo -e "${BLUE}Delete hiberfil.sys: DISABLED (use --delete-hiberfil to enable)${NC}"
 fi
-echo -e "${BLUE}Updated: 2025-07-07 02:35:12 UTC${NC}"
+echo -e "${BLUE}Updated: 2025-07-10 03:22:40 UTC${NC}"
 echo -e "${BLUE}User: ktauchathuranga${NC}"
 echo ""
 
@@ -193,7 +193,7 @@ safe_unmount() {
     return 0
 }
 
-# Function to handle hibernation file - NEW ADDITION
+# Function to handle hibernation file
 handle_hibernation_file() {
     local partition="$1"
     
@@ -346,7 +346,7 @@ check_modified_windows_partition() {
     
     # Try to mount the partition with NTFS3
     if try_mount "$partition" "rw"; then
-        # Check for hibernation file first - NEW ADDITION
+        # Check for hibernation file first
         handle_hibernation_file "$partition"
         HIBERNATION_EXIT_CODE=$?
         
@@ -462,7 +462,7 @@ perform_restoration() {
         fi
     fi
     
-    # Check for hibernation file again in read-write mode - NEW ADDITION
+    # Check for hibernation file again in read-write mode
     if [ -f "$MOUNT_POINT/hiberfil.sys" ] && [ "$DELETE_HIBERFIL" -eq 0 ]; then
         warning "Hibernation file still present. This may cause issues."
         warning "Consider using --delete-hiberfil option"
@@ -710,6 +710,73 @@ perform_restoration() {
     return 0
 }
 
+# Function to handle post-completion actions
+handle_completion() {
+    # Cleanup first
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
+    
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}          POST-COMPLETION OPTIONS           ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${GREEN}The Windows system has been successfully restored!${NC}"
+    echo ""
+    echo -e "${YELLOW}What was accomplished:${NC}"
+    echo -e "${YELLOW}1. Windows system files have been restored to normal${NC}"
+    echo -e "${YELLOW}2. Sticky Keys functionality is back to normal${NC}"
+    echo -e "${YELLOW}3. Admin bypass has been completely removed${NC}"
+    echo -e "${YELLOW}4. System is ready for normal Windows boot${NC}"
+    echo ""
+    echo -e "${YELLOW}Next steps:${NC}"
+    echo -e "${YELLOW}1. You can now power off PrivilegeOS${NC}"
+    echo -e "${YELLOW}2. Boot into Windows normally${NC}"
+    echo -e "${YELLOW}3. Verify that Shift x5 shows sticky keys dialog (not CMD)${NC}"
+    echo -e "${YELLOW}4. Windows should function completely normally${NC}"
+    echo ""
+    echo -e "${CYAN}Would you like to power off the system now?${NC}"
+    echo -e "${BLUE}Press ENTER to power off, or type 'n'/'no' to exit to shell: ${NC}"
+    
+    # Read user input
+    read -r POWER_CHOICE
+    
+    case "$POWER_CHOICE" in
+        ""|"y"|"Y"|"yes"|"YES"|"Yes")
+            echo ""
+            echo -e "${GREEN}Powering off the system...${NC}"
+            echo -e "${YELLOW}After shutdown, remove the USB drive and boot Windows normally.${NC}"
+            echo -e "${YELLOW}Windows should now function with normal login security.${NC}"
+            echo ""
+            
+            # Give user a moment to read the message
+            sleep 3
+            
+            # Sync and power off
+            sync
+            sync
+            poweroff
+            ;;
+        "n"|"N"|"no"|"NO"|"No")
+            echo ""
+            echo -e "${GREEN}Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+        *)
+            echo ""
+            echo -e "${YELLOW}Invalid choice. Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+    esac
+}
+
 # Main execution starts here...
 log "Starting Windows restoration scan..."
 
@@ -801,6 +868,8 @@ if [ -z "$WINDOWS_PARTITION" ]; then
     echo -e "${YELLOW}4. Windows partitions are encrypted (BitLocker)${NC}"
     echo -e "${YELLOW}5. Try running with --force option: putadmin --force${NC}"
     echo -e "${YELLOW}6. Try: putadmin --force --delete-hiberfil${NC}"
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
 
@@ -838,24 +907,22 @@ read -r CONFIRM
 if [ "$CONFIRM" != "YES" ]; then
     warning "Restoration cancelled by user"
     safe_unmount
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 0
 fi
 
 # Perform the restoration
 if perform_restoration "$WINDOWS_PARTITION"; then
     success "Windows restoration operation completed!"
-    echo ""
-    echo -e "${GREEN}Windows has been restored to normal functionality.${NC}"
-    echo -e "${GREEN}You can now boot Windows normally.${NC}"
+    
+    # Handle post-completion actions (power off or continue)
+    handle_completion
+    
 else
     error "Failed to perform restoration!"
+    # Cleanup on failure
+    safe_unmount
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
-
-# Cleanup
-rmdir "$MOUNT_POINT" 2>/dev/null || true
-
-echo ""
-echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
-echo -e "${CYAN}=============================================${NC}"

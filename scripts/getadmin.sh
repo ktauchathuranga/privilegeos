@@ -3,7 +3,7 @@
 # getadmin.sh - Windows Admin Access Script for PrivilegeOS
 # This script finds Windows partitions and performs the sticky keys bypass
 # WARNING: This is for educational/penetration testing purposes only!
-# Updated: 2025-07-09 10:57:45 UTC
+# Updated: 2025-07-10 03:19:00 UTC
 
 # Color codes for output
 RED='\033[0;31m'
@@ -101,7 +101,7 @@ if [ "$DELETE_HIBERFIL" -eq 1 ]; then
 else
     echo -e "${BLUE}Delete hiberfil.sys: DISABLED (use --delete-hiberfil to enable)${NC}"
 fi
-echo -e "${BLUE}Updated: 2025-07-06 10:57:45 UTC${NC}"
+echo -e "${BLUE}Updated: 2025-07-10 03:19:00 UTC${NC}"
 echo -e "${BLUE}User: ktauchathuranga${NC}"
 echo ""
 
@@ -711,7 +711,7 @@ perform_bypass() {
     echo ""
     echo -e "${RED}To restore (if needed):${NC}"
     echo -e "${RED}1. Boot back into PrivilegeOS${NC}"
-    echo -e "${RED}2. Run putadmin command{NC}"
+    echo -e "${RED}2. Run putadmin command${NC}"
     echo ""
     
     # Final unmount - go back to root directory first
@@ -721,8 +721,69 @@ perform_bypass() {
     return 0
 }
 
+# Function to handle post-completion actions
+handle_completion() {
+    # Cleanup first
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
+    
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${CYAN}=============================================${NC}"
+    echo -e "${CYAN}          POST-COMPLETION OPTIONS           ${NC}"
+    echo -e "${CYAN}=============================================${NC}"
+    echo ""
+    echo -e "${GREEN}The Windows admin bypass has been successfully completed!${NC}"
+    echo ""
+    echo -e "${YELLOW}Next steps:${NC}"
+    echo -e "${YELLOW}1. You should now power off PrivilegeOS${NC}"
+    echo -e "${YELLOW}2. Boot into Windows to test the bypass${NC}"
+    echo -e "${YELLOW}3. At the Windows login screen, press Shift 5 times${NC}"
+    echo -e "${YELLOW}4. You should see a CMD prompt with SYSTEM privileges${NC}"
+    echo ""
+    echo -e "${CYAN}Would you like to power off the system now?${NC}"
+    echo -e "${BLUE}Press ENTER to power off, or type 'n'/'no' to exit to shell: ${NC}"
+    
+    # Read user input
+    read -r POWER_CHOICE
+    
+    case "$POWER_CHOICE" in
+        ""|"y"|"Y"|"yes"|"YES"|"Yes")
+            echo ""
+            echo -e "${GREEN}Powering off the system...${NC}"
+            echo -e "${YELLOW}After shutdown, remove the USB drive and boot Windows normally.${NC}"
+            echo -e "${YELLOW}Remember to test the bypass at the login screen (Shift x5).${NC}"
+            echo ""
+            
+            # Give user a moment to read the message
+            sleep 3
+            
+            # Sync and power off
+            sync
+            sync
+            poweroff
+            ;;
+        "n"|"N"|"no"|"NO"|"No")
+            echo ""
+            echo -e "${GREEN}Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+        *)
+            echo ""
+            echo -e "${YELLOW}Invalid choice. Returning to shell...${NC}"
+            echo -e "${YELLOW}You can manually power off later with: poweroff${NC}"
+            echo -e "${YELLOW}Or reboot with: reboot${NC}"
+            echo ""
+            ;;
+    esac
+}
+
 # Main execution starts here...
-# Shwoing legal warning
+# Showing legal warning
 #show_legal_warning
 
 log "Starting Windows partition scan..."
@@ -813,6 +874,8 @@ if [ -z "$WINDOWS_PARTITION" ]; then
     echo -e "${YELLOW}2. Make sure Windows partitions are not encrypted (BitLocker)${NC}"
     echo -e "${YELLOW}3. Try running 'getdrives' to see available partitions${NC}"
     echo -e "${YELLOW}4. Try manually: mount -t ntfs3 -o rw,force /dev/sdXY /mnt${NC}"
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
 
@@ -842,23 +905,22 @@ read -r CONFIRM
 if [ "$CONFIRM" != "YES" ]; then
     warning "Operation cancelled by user"
     safe_unmount
+    # Cleanup before exit
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 0
 fi
 
 # Perform the bypass
 if perform_bypass "$WINDOWS_PARTITION"; then
     success "Windows admin access bypass operation completed!"
-    echo ""
-    echo -e "${GREEN}Please test the bypass in Windows and return here if needed.${NC}"
+    
+    # Handle post-completion actions (power off or continue)
+    handle_completion
+    
 else
     error "Failed to perform bypass!"
+    # Cleanup on failure
+    safe_unmount
+    rmdir "$MOUNT_POINT" 2>/dev/null || true
     exit 1
 fi
-
-# Cleanup
-rmdir "$MOUNT_POINT" 2>/dev/null || true
-
-echo ""
-echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}              SCRIPT COMPLETED              ${NC}"
-echo -e "${CYAN}=============================================${NC}"
