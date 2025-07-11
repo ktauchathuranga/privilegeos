@@ -1,4 +1,4 @@
-# PrivilegeOS
+### PrivilegeOS
 
 **A specialized Linux distribution designed for penetration testing and Windows admin access bypass**
 
@@ -73,7 +73,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **No Installation Required**: Runs entirely from USB/CD
 - **Root Access**: Automatic root login
 - **NTFS3 Support**: Native kernel NTFS driver for reliable Windows filesystem access
-- **UEFI Compatible**: Modern firmware support
+- **UEFI & Legacy BIOS Compatible**: Supports both modern and older firmware.
 
 ## ✨ Features
 
@@ -84,6 +84,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **Network Support**: Ethernet and Wi-Fi drivers
 - **Storage Support**: SATA, NVMe, USB storage devices
 - **Graphics Support**: Intel, AMD, NVIDIA drivers
+- **Boot Support**: UEFI and Legacy BIOS modes.
 
 ### Security Tools
 - **Windows Admin Bypass**: Sticky keys replacement technique
@@ -104,7 +105,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **CPU**: x86-64 compatible processor
 - **RAM**: 1GB (2GB recommended)
 - **Storage**: 1GB available space for USB creation
-- **Firmware**: UEFI or Legacy BIOS support
+- **Firmware**: UEFI or Legacy BIOS support.
 
 ### Recommended Requirements
 - **CPU**: Intel Core i3 or AMD equivalent
@@ -120,7 +121,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 
 ## 🚀 Installation
 
-### Quick Start
+### Quick Start: Method 1 (Image Burning)
 
 1. **Download** the latest PrivilegeOS image:
    ```bash
@@ -133,24 +134,40 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
    ```
 
 3. **Boot** from USB drive:
-   - Enable UEFI boot in BIOS/firmware settings
-   - Select USB drive as boot device
-   - PrivilegeOS will boot automatically
+   - Enable UEFI or Legacy BIOS boot in your firmware settings.
+   - Select USB drive as boot device.
+   - PrivilegeOS will boot automatically.
 
-### Alternative Methods
+### Quick Start: Method 2 (ZIP Extraction)
 
-#### Using Balena Etcher (GUI)
+1. **Download** the latest PrivilegeOS contents zip file:
+   ```bash
+   wget https://github.com/ktauchathuranga/privilegeos/releases/latest/PrivilegeOS_contents.zip
+   ```
+
+2. **Extract to USB**:
+   - Format your USB drive with a compatible filesystem (FAT32 is recommended for broad compatibility).
+   - Extract the contents of `PrivilegeOS_contents.zip` directly to the root of your USB drive.
+
+3. **Boot** from USB drive:
+   - Enable UEFI or Legacy BIOS boot in your firmware settings.
+   - Select the USB drive as the boot device.
+   - PrivilegeOS will boot automatically.
+
+### Alternative GUI Tools for Image Burning
+
+#### Using Balena Etcher
 1. Download [Balena Etcher](https://www.balena.io/etcher/)
-2. Select PrivilegeOS.img file
-3. Select your USB drive
-4. Click "Flash"
+2. Select the `PrivilegeOS.img` file.
+3. Select your USB drive.
+4. Click "Flash".
 
 #### Using Rufus (Windows)
 1. Download [Rufus](https://rufus.ie/)
-2. Select your USB drive
-3. Select PrivilegeOS.img as boot selection
-4. Set partition scheme to GPT
-5. Click "START"
+2. Select your USB drive.
+3. Select `PrivilegeOS.img` as the boot selection.
+4. Set the partition scheme to GPT for UEFI or MBR for Legacy BIOS.
+5. Click "START".
 
 ## 💾 USB Writing Tool
 
@@ -169,7 +186,7 @@ The `boot.sh` script provides a safe and convenient way to write PrivilegeOS ima
 # List available block devices
 ./boot.sh --list
 
-# Write to specific device
+# Write to a specific device
 ./boot.sh --device sdb
 
 # Automated mode (skip confirmations)
@@ -197,12 +214,12 @@ The `boot.sh` script provides a safe and convenient way to write PrivilegeOS ima
 
 The `boot.sh` script includes comprehensive safety measures:
 
-- **System Drive Protection**: Automatically detects and prevents writing to system drives
-- **Device Validation**: Verifies device existence and type before writing
-- **Mount Check**: Automatically unmounts any mounted partitions on target device
-- **Size Verification**: Ensures USB drive is large enough for the image
-- **Confirmation Prompts**: Requires explicit confirmation before destructive operations
-- **Write Verification**: Performs basic verification after writing
+- **System Drive Protection**: Automatically detects and prevents writing to system drives.
+- **Device Validation**: Verifies device existence and type before writing.
+- **Mount Check**: Automatically unmounts any mounted partitions on the target device.
+- **Size Verification**: Ensures the USB drive is large enough for the image.
+- **Confirmation Prompts**: Requires explicit confirmation before destructive operations.
+- **Write Verification**: Performs basic verification after writing.
 
 #### Example Usage Sessions
 
@@ -275,12 +292,12 @@ All operations are logged to `build/logs/boot.log` for troubleshooting and audit
 When PrivilegeOS boots, you'll see:
 
 ```
-  ____       _       _ _                  ___  ____  
- |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___| 
- | |_) | '__| \ \ / / | |/ _ \/ _` |/ _ \ | | \___ \ 
+  ____       _       _ _                  ___  ____
+ |  _ \ _ __(_)_   _(_) | ___  __ _  ___ / _ \/ ___|
+ | |_) | '__| \ \ / / | |/ _ \/ _` |/ _ \ | | \___ \
  |  __/| |  | |\ V /| | |  __/ (_| |  __/ |_| |___) |
- |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/ 
-                              |___/                 
+ |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|\___/|____/
+                              |___/
 
 Welcome to PrivilegeOS!
 Build date: 2025-07-06 11:51:07
@@ -300,7 +317,7 @@ Custom commands available:
 Type 'poweroff' or 'reboot' to exit.
 To mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt
 
-/ # 
+/ #
 ```
 
 ### Basic Commands
@@ -455,15 +472,15 @@ PrivilegeOS includes a sophisticated Windows admin bypass system that uses the "
 
 1. **Detection**: Script scans for Windows NTFS partitions
 2. **Hibernation Check**: Detects and optionally removes hibernation files
-3. **Mounting**: Mounts Windows filesystem with write access
-4. **Backup**: Creates backup of original system files
+3. **Mounting**: Mounts the Windows filesystem with write access
+4. **Backup**: Creates a backup of original system files
 5. **Replacement**: Replaces `sethc.exe` with `cmd.exe`
 6. **Verification**: Confirms operation success
 
 ### Usage Process
 
 #### Step 1: Boot PrivilegeOS
-Boot from USB and wait for the command prompt.
+Boot from your USB and wait for the command prompt.
 
 #### Step 2: Run getadmin
 ```bash
@@ -501,7 +518,7 @@ Both `getadmin` and `putadmin` can handle Windows hibernation files:
 - Warns about hibernation implications
 
 #### Optional Deletion
-- Use `--delete-hiberfil` flag to automatically delete hibernation file
+- Use the `--delete-hiberfil` flag to automatically delete the hibernation file
 - Prompts for confirmation before deletion
 - Verifies successful deletion
 - Frees up disk space (often several GB)
@@ -509,17 +526,17 @@ Both `getadmin` and `putadmin` can handle Windows hibernation files:
 #### Benefits of Deletion
 - Allows proper NTFS mounting of hibernated systems
 - Prevents Windows hibernation resume issues
-- Provides cleaner system state for modifications
+- Provides a cleaner system state for modifications
 
 ### Security Considerations
 
 ⚠️ **WARNING**: This technique should only be used on systems you own or have explicit permission to test.
 
-- **Legal**: Ensure you have proper authorization
-- **Detection**: May be detected by security software
-- **Forensics**: Leaves traces in system logs
-- **Backup**: Always create backups before modification
-- **Hibernation**: Deletion prevents hibernation resume (unsaved work will be lost)
+- **Legal**: Ensure you have proper authorization.
+- **Detection**: May be detected by security software.
+- **Forensics**: Leaves traces in system logs.
+- **Backup**: Always create backups before modification.
+- **Hibernation**: Deletion prevents hibernation resume (unsaved work will be lost).
 
 ## 🔨 Building from Source
 
@@ -577,6 +594,7 @@ cd privilegeos
 ```bash
 ./build.sh
 ```
+This will create the `PrivilegeOS.img` file and a `PrivilegeOS_contents.zip` file in the `build/` directory.
 
 #### 3. Custom Build Options
 ```bash
@@ -597,7 +615,7 @@ cd privilegeos
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--clean` | Clean build directory | `--clean` |
+| `--clean` | Clean the build directory | `--clean` |
 | `--size SIZE` | Disk image size in MB | `--size 1024` |
 | `--threads N` | Compilation threads | `--threads 8` |
 | `--memory SIZE` | QEMU memory size | `--memory 4G` |
@@ -649,6 +667,7 @@ privilegeos/
 │   └── busybox.config       # BusyBox configuration
 ├── build/                   # Build output directory
 │   ├── PrivilegeOS.img      # Final disk image
+│   ├── PrivilegeOS_contents.zip # Zip file of bootable contents
 │   ├── initramfs/           # Root filesystem
 │   └── logs/                # Build logs
 ├── linux-6.15.3/           # Kernel source (downloaded)
@@ -719,16 +738,16 @@ mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 
 **Problem**: System doesn't boot from USB
 **Solutions:**
-1. Verify UEFI boot is enabled in BIOS
-2. Disable Secure Boot if enabled
-3. Try different USB ports (USB 2.0 vs 3.0)
-4. Re-write image to USB with different tool
+1. Verify that UEFI or Legacy BIOS boot is enabled in your firmware settings.
+2. Disable Secure Boot if it is enabled.
+3. Try different USB ports (USB 2.0 vs 3.0).
+4. Re-write the image to the USB with a different tool or try the ZIP extraction method.
 
 **Problem**: Kernel panic on boot
 **Solutions:**
-1. Check hardware compatibility
-2. Try booting with `acpi=off` parameter
-3. Verify image integrity with checksum
+1. Check hardware compatibility.
+2. Try booting with the `acpi=off` parameter.
+3. Verify the image integrity with a checksum.
 
 #### NTFS Mounting Issues
 
@@ -738,54 +757,54 @@ mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 2. Try force mounting: `mount -t ntfs3 -o rw,force /dev/sdX /mnt`
 3. Check for hibernation: look for `hiberfil.sys`
 4. Use hibernation deletion: `getadmin --delete-hiberfil` or `putadmin --delete-hiberfil`
-5. Verify partition exists: `fdisk -l`
+5. Verify the partition exists: `fdisk -l`
 
 **Problem**: "Read-only file system" error
 **Solutions:**
 1. Remount with write permissions: `mount -o remount,rw /mnt`
 2. Check filesystem errors: `fsck.ntfs /dev/sdX`
-3. Remove hibernation file: `rm /mnt/hiberfil.sys` or use `--delete-hiberfil`
+3. Remove the hibernation file: `rm /mnt/hiberfil.sys` or use `--delete-hiberfil`
 
 #### getadmin Issues
 
 **Problem**: No Windows partition found
 **Solutions:**
-1. Use force option: `getadmin --force`
+1. Use the force option: `getadmin --force`
 2. Check partitions manually: `getdrives`
-3. Try different mount options
+3. Try different mount options.
 4. Use hibernation deletion: `getadmin --force --delete-hiberfil`
-5. Verify Windows is not BitLocker encrypted
+5. Verify that Windows is not BitLocker encrypted.
 
 **Problem**: Permission denied errors
 **Solutions:**
 1. Check file permissions: `ls -la /mnt/Windows/System32/`
 2. Try changing permissions: `chmod 755 /mnt/Windows/System32/sethc.exe`
-3. Use force mount option
-4. Remove hibernation file: `getadmin --delete-hiberfil`
+3. Use the force mount option.
+4. Remove the hibernation file: `getadmin --delete-hiberfil`
 5. Check for file attributes: `lsattr /mnt/Windows/System32/sethc.exe`
 
 **Problem**: Hibernation file conflicts
 **Solutions:**
 1. Use hibernation deletion: `getadmin --delete-hiberfil`
 2. Manual deletion: `rm /mnt/hiberfil.sys`
-3. Boot Windows normally first, then shut down properly
+3. Boot Windows normally first, then shut down properly.
 4. Use force mount: `getadmin --force`
 
 #### putadmin Issues
 
-**Problem**: Cannot restore system
+**Problem**: Cannot restore the system
 **Solutions:**
-1. Use force option: `putadmin --force`
+1. Use the force option: `putadmin --force`
 2. Check for backup files: `ls -la /mnt/Windows/System32/sethc.exe.backup`
 3. Handle hibernation: `putadmin --force --delete-hiberfil`
-4. Verify system was previously modified by getadmin
+4. Verify the system was previously modified by getadmin.
 
 **Problem**: Bypass doesn't work in Windows
 **Solutions:**
-1. Verify file sizes changed: `ls -la /mnt/Windows/System32/sethc.exe`
-2. Check backup was created: `ls -la /mnt/Windows/System32/sethc.exe.backup`
+1. Verify that file sizes have changed: `ls -la /mnt/Windows/System32/sethc.exe`
+2. Check that a backup was created: `ls -la /mnt/Windows/System32/sethc.exe.backup`
 3. Try restoration and re-application: `putadmin` then `getadmin`
-4. Check Windows version compatibility
+4. Check Windows version compatibility.
 
 ### Debug Information
 
@@ -805,8 +824,7 @@ free -m
 cat /proc/partitions
 ```
 
-#### Network Debugging
-```bash
+#### Network Debugging```bash
 # Check network interfaces
 ip addr show
 
@@ -861,26 +879,10 @@ find /mnt -name "hiberfil.sys" -ls 2>/dev/null
 
 By using this software, you acknowledge that:
 
-1. **Authorization Required**: You will only use this tool on systems you own or have explicit written permission to test
-2. **Legal Compliance**: You will comply with all applicable local, state, and federal laws
-3. **No Malicious Use**: You will not use this tool for unauthorized access, data theft, or malicious purposes
-4. **Educational Purpose**: This tool is intended for learning about security vulnerabilities and defensive measures
-
-### Ethical Guidelines
-
-#### Responsible Disclosure
-If you discover vulnerabilities using PrivilegeOS:
-1. Report to the affected vendor first
-2. Allow reasonable time for patching
-3. Follow coordinated disclosure practices
-4. Do not exploit for personal gain
-
-#### Professional Use
-For security professionals:
-1. Obtain proper authorization before testing
-2. Document all activities for client records
-3. Follow industry best practices
-4. Provide constructive remediation advice
+1. **Authorization Required**: You will only use this tool on systems you own or have explicit written permission to test.
+2. **Legal Compliance**: You will comply with all applicable local, state, and federal laws.
+3. **No Malicious Use**: You will not use this tool for unauthorized access, data theft, or malicious purposes.
+4. **Educational Purpose**: This tool is intended for learning about security vulnerabilities and defensive measures.
 
 ### Technical Security
 
@@ -895,7 +897,7 @@ This tool may be detected by:
 This tool may leave traces including:
 - Modified system files
 - Backup files in System32
-- Registry changes (if additional tools used)
+- Registry changes (if additional tools are used)
 - Event log entries
 - Deleted hibernation files
 
@@ -913,62 +915,62 @@ git checkout -b feature/my-new-feature
 ```
 
 #### 2. Make Changes
-- Follow existing code style
-- Add comprehensive comments
-- Test thoroughly
-- Update documentation
+- Follow existing code style.
+- Add comprehensive comments.
+- Test thoroughly.
+- Update documentation.
 
-#### 3. Submit Pull Request
-- Describe changes clearly
-- Include test results
-- Reference any related issues
-- Sign commits with GPG key
+#### 3. Submit a Pull Request
+- Describe your changes clearly.
+- Include test results.
+- Reference any related issues.
+- Sign commits with a GPG key.
 
 ### Contribution Guidelines
 
 #### Code Standards
-- **Shell Scripts**: Follow POSIX shell standards
-- **Documentation**: Use clear, concise language
-- **Comments**: Explain complex logic
-- **Error Handling**: Include comprehensive error checking
+- **Shell Scripts**: Follow POSIX shell standards.
+- **Documentation**: Use clear, concise language.
+- **Comments**: Explain complex logic.
+- **Error Handling**: Include comprehensive error checking.
 
 #### Testing Requirements
-- Test on multiple hardware configurations
-- Verify UEFI and Legacy BIOS compatibility
-- Test with various Windows versions
-- Test hibernation file handling
-- Document any limitations or known issues
+- Test on multiple hardware configurations.
+- Verify UEFI and Legacy BIOS compatibility.
+- Test with various Windows versions.
+- Test hibernation file handling.
+- Document any limitations or known issues.
 
 #### Documentation Updates
-- Update README for new features
-- Add help text for new commands
-- Include usage examples
-- Update troubleshooting section
+- Update the README for new features.
+- Add help text for new commands.
+- Include usage examples.
+- Update the troubleshooting section.
 
 ### Development Environment
 
-#### Setting Up Development Environment
+#### Setting Up the Development Environment
 ```bash
 # Install development dependencies
 sudo apt-get install -y build-essential git
 
-# Clone repository
+# Clone the repository
 git clone https://github.com/ktauchathuranga/privilegeos.git
 cd privilegeos
 
-# Create development branch
+# Create a development branch
 git checkout -b develop
 ```
 
 #### Testing Changes
 ```bash
-# Test build process
+# Test the build process
 ./build.sh --qemu-only
 
 # Test specific components
 ./build.sh --clean --skip-qemu
 
-# Test in virtual machine
+# Test in a virtual machine
 qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.fd -drive file=build/PrivilegeOS.img,format=raw
 ```
 
@@ -977,12 +979,12 @@ qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.fd -drive file=build/Privilege
 ### Third-Party Licenses
 
 #### Linux Kernel
-Licensed under GNU General Public License v2.0
+Licensed under the GNU General Public License v2.0
 - **Source**: https://kernel.org/
 - **License**: https://www.gnu.org/licenses/gpl-2.0.html
 
 #### BusyBox
-Licensed under GNU General Public License v2.0
+Licensed under the GNU General Public License v2.0
 - **Source**: https://busybox.net/
 - **License**: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -998,14 +1000,13 @@ All other components maintain their respective licenses. See individual source f
 
 Special thanks to:
 
-- **Linux Kernel Team** for the robust kernel foundation
-- **BusyBox Team** for the essential utilities
-- **NTFS3 Developers** for native Windows filesystem support
-- **Arch Community** for helping to make it robust
+- **The Linux Kernel Team** for the robust kernel foundation
+- **The BusyBox Team** for the essential utilities
+- **The NTFS3 Developers** for native Windows filesystem support
+- **The Arch Community** for helping to make it robust
 
 ---
 
 **Built with ❤️ for the cybersecurity community**
 
 *"Security through knowledge, not obscurity"*
-
