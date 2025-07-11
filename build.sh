@@ -2,7 +2,7 @@
 
 # Script: build.sh
 # Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
-# Version: 0.1.0 (Added BIOS/UEFI Hybrid Boot)
+# Version: 0.2.0 (Added BIOS/UEFI Hybrid Boot)
 # Date: 2025-07-06
 
 # Exit on errors
