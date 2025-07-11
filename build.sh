@@ -2,7 +2,7 @@
 
 # Script: build.sh
 # Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
-# Version: 0.2.0 (Added BIOS/UEFI Hybrid Boot)
+# Version: 0.2.0 (Added BIOS/UEFI Hybrid Boot and Image Content Zipping)
 # Date: 2025-07-06
 
 # Exit on errors
@@ -89,6 +89,10 @@ cleanup() {
     if [ -n "${LOOP_DEV}" ] && losetup -a | grep -q "${LOOP_DEV}"; then
         sudo umount "${BUILD_DIR}/mnt" 2>/dev/null || true
         sudo losetup -d "${LOOP_DEV}" || true
+    fi
+    # Also cleanup zip mount point if script exited unexpectedly
+    if mountpoint -q "${BUILD_DIR}/zip_mnt"; then
+        sudo umount "${BUILD_DIR}/zip_mnt" 2>/dev/null || true
     fi
 }
 
@@ -188,7 +192,7 @@ parse_arguments() {
 # --- Main Build Steps ---
 check_dependencies() {
     log "Checking for dependencies..."
-    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar" "grub-install")
+    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar" "grub-install" "zip")
     local missing_deps=()
 
     for dep in "${deps[@]}"; do
@@ -211,11 +215,11 @@ check_dependencies() {
         
         # Detect OS and suggest installation command
         if [ -f /etc/debian_version ]; then
-            echo "Try: sudo apt-get install build-essential qemu-system-x86 parted dosfstools wget xz-utils grub-pc-bin grub-efi-amd64-bin"
+            echo "Try: sudo apt-get install build-essential qemu-system-x86 parted dosfstools wget xz-utils grub-pc-bin grub-efi-amd64-bin zip"
         elif [ -f /etc/fedora-release ]; then
-            echo "Try: sudo dnf install gcc make bc qemu-system-x86 parted dosfstools wget xz grub2-install"
+            echo "Try: sudo dnf install gcc make bc qemu-system-x86 parted dosfstools wget xz grub2-install zip"
         elif [ -f /etc/arch-release ]; then
-            echo "Try: sudo pacman -S base-devel qemu-system-x86 parted dosfstools wget xz grub"
+            echo "Try: sudo pacman -S base-devel qemu-system-x86 parted dosfstools wget xz grub zip"
         else
             echo "Please install the missing dependencies."
         fi
@@ -959,6 +963,49 @@ EOF
     log "Hybrid BIOS/UEFI disk image created at ${DISK_IMG}"
 }
 
+create_image_contents_zip() {
+    log "Creating zip archive of image contents..."
+    local zip_mnt_dir="${BUILD_DIR}/zip_mnt"
+    local zip_loop_dev=""
+    local zip_file="${BUILD_DIR}/${OS_NAME}_contents.zip"
+
+    # Ensure the image file exists
+    if [ ! -f "${DISK_IMG}" ]; then
+        error "Disk image ${DISK_IMG} not found. Cannot create zip file."
+    fi
+
+    # Cleanup function specific to this operation
+    zip_cleanup() {
+        if mountpoint -q "${zip_mnt_dir}"; then
+            sudo umount "${zip_mnt_dir}"
+        fi
+        if [ -n "${zip_loop_dev}" ] && losetup -a | grep -q "${zip_loop_dev}"; then
+            sudo losetup -d "${zip_loop_dev}"
+        fi
+        rm -rf "${zip_mnt_dir}"
+    }
+    trap zip_cleanup RETURN
+
+    mkdir -p "${zip_mnt_dir}"
+
+    log "Setting up loopback device for zipping..."
+    zip_loop_dev=$(sudo losetup -f --show -P "${DISK_IMG}")
+    if [ -z "$zip_loop_dev" ]; then
+        error "Failed to set up loopback device for zipping."
+    fi
+
+    log "Mounting image partition to temporary directory..."
+    sudo mount "${zip_loop_dev}p2" "${zip_mnt_dir}"
+
+    log "Creating zip file at ${zip_file}..."
+    (
+        cd "${zip_mnt_dir}" && \
+        sudo zip -r "${zip_file}" . > "${LOG_DIR}/zip_creation.log" 2>&1
+    ) || error "Failed to create zip file. See ${LOG_DIR}/zip_creation.log for details."
+
+    log "Image contents successfully archived."
+}
+
 write_to_usb() {
     log "Preparing to write to USB drive..."
     
@@ -1102,6 +1149,7 @@ main() {
     install_custom_scripts
     build_kernel
     create_hybrid_disk_image
+    create_image_contents_zip
     
     if [ "${SKIP_QEMU:-0}" -ne 1 ]; then
         if [ "${QEMU_ONLY:-0}" -eq 1 ] || { read -p "Test in QEMU first? (y/n): " TEST_QEMU && [[ "$TEST_QEMU" == "y" || "$TEST_QEMU" == "Y" ]]; }; then
@@ -1127,6 +1175,7 @@ main() {
     echo -e "${GREEN}- Boot Mode: Hybrid BIOS/UEFI${NC}"
     echo -e "${GREEN}- NTFS support: Native kernel NTFS3 driver${NC}"
     echo -e "${GREEN}- Image: ${DISK_IMG} ($(du -h "${DISK_IMG}" | cut -f1))${NC}"
+    echo -e "${GREEN}- Contents Archive: ${BUILD_DIR}/${OS_NAME}_contents.zip${NC}"
     echo -e "${GREEN}- Logs: ${LOG_DIR}${NC}"
     
     SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f 2>/dev/null | wc -l)
