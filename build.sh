@@ -14,7 +14,7 @@ KERNEL_VER="6.15.3"
 BUSYBOX_VER="1.36.1"
 THREADS=$(nproc)
 MEMORY="2G"
-IMAGE_SIZE="64"  # In MB
+IMAGE_SIZE="50"  # In MB
 
 # Source directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
