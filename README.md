@@ -899,21 +899,6 @@ This tool may leave traces including:
 - Event log entries
 - Deleted hibernation files
 
-### Updates and Patches
-
-#### Security Updates
-- Monitor for kernel security updates
-- Update BusyBox for security fixes
-- Review tool effectiveness regularly
-- Test against latest Windows versions
-
-#### Vulnerability Reporting
-To report security issues in PrivilegeOS:
-1. Email: security@example.com
-2. Include detailed reproduction steps
-3. Allow 90 days for response and fixing
-4. Follow responsible disclosure guidelines
-
 ## 🤝 Contributing
 
 We welcome contributions from the security community!
