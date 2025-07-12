@@ -350,7 +350,7 @@ create_initramfs_content() {
 
 # Init script for ${OS_NAME}
 # Set up kernel message logging level (1=critical, 7=debug)
-dmesg -n 7
+dmesg -n 1
 
 # Force output to the video console
 exec > /dev/tty0 2>&1
@@ -364,8 +364,8 @@ mount -t devtmpfs none /dev || echo "Failed to mount /dev"
 mount -t tmpfs none /tmp || echo "Failed to mount /tmp"
 mount -t devpts devpts /dev/pts || echo "Failed to mount /dev/pts"
 
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 # Setup loopback interface
 ip link set lo up
@@ -463,8 +463,8 @@ chmod 666 /dev/zero
 chmod 666 /dev/tty*
 chmod 666 /dev/random
 chmod 666 /dev/urandom
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 mkdir -p /var/log
 dmesg > /var/log/dmesg.log
@@ -929,9 +929,10 @@ set timeout=3
 set default=0
 
 menuentry "${OS_NAME}" {
-    linux /boot/bzImage console=tty0 console=ttyS0
+    linux /boot/bzImage quiet loglevel=3 console=tty0
 }
 EOF
+
     
     cat <<EOF | sudo tee "${BUILD_DIR}/mnt/README.txt" > /dev/null
 ${OS_NAME} - A minimal Linux distribution with native NTFS3 support

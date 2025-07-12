@@ -18,8 +18,8 @@ chmod 666 /dev/zero
 chmod 666 /dev/tty*
 chmod 666 /dev/random
 chmod 666 /dev/urandom
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 mkdir -p /var/log
 dmesg > /var/log/dmesg.log
@@ -38,7 +38,7 @@ echo -e "\e[1;35m                              |___/                  \e[0m"
 echo ""
 
 echo -e "\e[1mWelcome to PrivilegeOS!\e[0m"
-echo -e "\e[1mBuild date: Fri Jul 11 09:36:29 PM +0530 2025\e[0m"
+echo -e "\e[1mBuild date: Sat Jul 12 10:29:45 AM +0530 2025\e[0m"
 echo -e "\e[1mYou are running as: \e[32mROOT\e[0m"
 echo ""
 
