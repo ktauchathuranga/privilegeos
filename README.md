@@ -107,12 +107,6 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **Storage**: 1GB available space for USB creation
 - **Firmware**: UEFI or Legacy BIOS support.
 
-### Recommended Requirements
-- **CPU**: Intel Core i3 or AMD equivalent
-- **RAM**: 4GB or more
-- **Storage**: USB 3.0+ drive for faster boot times
-- **Network**: Ethernet or Wi-Fi adapter
-
 ### Supported Hardware
 - **Storage Controllers**: AHCI, NVMe, USB
 - **Network Adapters**: Intel, Realtek, Atheros, Broadcom
@@ -136,22 +130,6 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 3. **Boot** from USB drive:
    - Enable UEFI or Legacy BIOS boot in your firmware settings.
    - Select USB drive as boot device.
-   - PrivilegeOS will boot automatically.
-
-### Quick Start: Method 2 (ZIP Extraction)
-
-1. **Download** the latest PrivilegeOS contents zip file:
-   ```bash
-   wget https://github.com/ktauchathuranga/privilegeos/releases/latest/PrivilegeOS_contents.zip
-   ```
-
-2. **Extract to USB**:
-   - Format your USB drive with a compatible filesystem (FAT32 is recommended for broad compatibility).
-   - Extract the contents of `PrivilegeOS_contents.zip` directly to the root of your USB drive.
-
-3. **Boot** from USB drive:
-   - Enable UEFI or Legacy BIOS boot in your firmware settings.
-   - Select the USB drive as the boot device.
    - PrivilegeOS will boot automatically.
 
 ### Alternative GUI Tools for Image Burning
@@ -741,7 +719,7 @@ mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 1. Verify that UEFI or Legacy BIOS boot is enabled in your firmware settings.
 2. Disable Secure Boot if it is enabled.
 3. Try different USB ports (USB 2.0 vs 3.0).
-4. Re-write the image to the USB with a different tool or try the ZIP extraction method.
+4. Re-write the image to the USB with a different tool.
 
 **Problem**: Kernel panic on boot
 **Solutions:**
