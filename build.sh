@@ -870,6 +870,9 @@ build_kernel() {
         ./scripts/config --disable CONFIG_SOUND
         ./scripts/config --disable CONFIG_SND
         
+        ./scripts/config --disable CONFIG_EARLY_PRINTK
+        ./scripts/config --enable CONFIG_DRM_KMS_HELPER
+        
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
     fi
@@ -928,8 +931,25 @@ create_hybrid_disk_image() {
 set timeout=3
 set default=0
 
-menuentry "${OS_NAME}" {
-    linux /boot/bzImage quiet loglevel=3 console=tty0
+# This menu entry will be automatically hidden by GRUB in BIOS mode.
+# It will only be visible when booting via UEFI.
+if [ "\$grub_platform" = "efi" ]; then
+    menuentry "${OS_NAME} (UEFI Mode)" {
+        linux /boot/bzImage quiet loglevel=0
+    }
+fi
+
+# This menu entry will be automatically hidden by GRUB in UEFI mode.
+# It will only be visible when booting via BIOS.
+if [ "\$grub_platform" = "pc" ]; then
+    menuentry "${OS_NAME} (BIOS Mode)" {
+        linux /boot/bzImage quiet loglevel=0 efi=off
+    }
+fi
+
+# A verbose/debug entry that is always visible.
+menuentry "${OS_NAME} (Verbose Debug Mode)" {
+    linux /boot/bzImage console=tty0 console=ttyS0
 }
 EOF
 
