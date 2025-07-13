@@ -974,16 +974,10 @@ All other components maintain their respective licenses. See individual source f
 
 ---
 
-## 🙏 Acknowledgments
+## 🫥 Screenshots
 
-Special thanks to:
-
-- **The Linux Kernel Team** for the robust kernel foundation
-- **The BusyBox Team** for the essential utilities
-- **The NTFS3 Developers** for native Windows filesystem support
-- **The Arch Community** for helping to make it robust
-
----
+![Screenshot](docs/ss1.png)
+![Screenshot](docs/ss2.png)
 
 **Built with ❤️ for the cybersecurity community**
 
