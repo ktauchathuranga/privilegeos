@@ -2,7 +2,7 @@
 
 # Init script for PrivilegeOS
 # Set up kernel message logging level (1=critical, 7=debug)
-dmesg -n 7
+dmesg -n 1
 
 # Force output to the video console
 exec > /dev/tty0 2>&1
@@ -16,8 +16,8 @@ mount -t devtmpfs none /dev || echo "Failed to mount /dev"
 mount -t tmpfs none /tmp || echo "Failed to mount /tmp"
 mount -t devpts devpts /dev/pts || echo "Failed to mount /dev/pts"
 
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 # Setup loopback interface
 ip link set lo up

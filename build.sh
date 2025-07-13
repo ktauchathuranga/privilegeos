@@ -2,7 +2,7 @@
 
 # Script: build.sh
 # Description: Builds PrivilegeOS with custom script integration and kernel NTFS3 support
-# Version: 0.0.0 (Initial Release)
+# Version: 0.2.0 (Added BIOS/UEFI Hybrid Boot and Image Content Zipping)
 # Date: 2025-07-06
 
 # Exit on errors
@@ -14,7 +14,7 @@ KERNEL_VER="6.15.3"
 BUSYBOX_VER="1.36.1"
 THREADS=$(nproc)
 MEMORY="2G"
-IMAGE_SIZE="35"  # In MB
+IMAGE_SIZE="50"  # In MB
 
 # Source directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -90,6 +90,10 @@ cleanup() {
         sudo umount "${BUILD_DIR}/mnt" 2>/dev/null || true
         sudo losetup -d "${LOOP_DEV}" || true
     fi
+    # Also cleanup zip mount point if script exited unexpectedly
+    if mountpoint -q "${BUILD_DIR}/zip_mnt"; then
+        sudo umount "${BUILD_DIR}/zip_mnt" 2>/dev/null || true
+    fi
 }
 
 show_help() {
@@ -117,7 +121,7 @@ Examples:
   $0 --busybox-config my_busybox.config --kernel-config my_kernel.config
   $0 --skip-deps
 
-Note: This version uses the kernel NTFS3 driver for native NTFS support.
+Note: This version creates a hybrid BIOS/UEFI bootable image with NTFS3 support.
 EOF
     exit 0
 }
@@ -188,7 +192,7 @@ parse_arguments() {
 # --- Main Build Steps ---
 check_dependencies() {
     log "Checking for dependencies..."
-    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar")
+    local deps=("gcc" "make" "bc" "qemu-system-x86_64" "parted" "mkfs.vfat" "losetup" "lsblk" "wget" "xz" "tar" "grub-install" "zip")
     local missing_deps=()
 
     for dep in "${deps[@]}"; do
@@ -211,11 +215,11 @@ check_dependencies() {
         
         # Detect OS and suggest installation command
         if [ -f /etc/debian_version ]; then
-            echo "Try: sudo apt-get install ${missing_deps[*]}"
+            echo "Try: sudo apt-get install build-essential qemu-system-x86 parted dosfstools wget xz-utils grub-pc-bin grub-efi-amd64-bin zip"
         elif [ -f /etc/fedora-release ]; then
-            echo "Try: sudo dnf install ${missing_deps[*]}"
+            echo "Try: sudo dnf install gcc make bc qemu-system-x86 parted dosfstools wget xz grub2-install zip"
         elif [ -f /etc/arch-release ]; then
-            echo "Try: sudo pacman -S ${missing_deps[*]}"
+            echo "Try: sudo pacman -S base-devel qemu-system-x86 parted dosfstools wget xz grub zip"
         else
             echo "Please install the missing dependencies."
         fi
@@ -346,7 +350,7 @@ create_initramfs_content() {
 
 # Init script for ${OS_NAME}
 # Set up kernel message logging level (1=critical, 7=debug)
-dmesg -n 7
+dmesg -n 1
 
 # Force output to the video console
 exec > /dev/tty0 2>&1
@@ -360,8 +364,8 @@ mount -t devtmpfs none /dev || echo "Failed to mount /dev"
 mount -t tmpfs none /tmp || echo "Failed to mount /tmp"
 mount -t devpts devpts /dev/pts || echo "Failed to mount /dev/pts"
 
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 # Setup loopback interface
 ip link set lo up
@@ -459,8 +463,8 @@ chmod 666 /dev/zero
 chmod 666 /dev/tty*
 chmod 666 /dev/random
 chmod 666 /dev/urandom
-chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
-chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
+# chmod -R a+r /proc 2>/dev/null || echo "Warning: Could not set permissions on /proc"
+# chmod -R a+r /sys 2>/dev/null || echo "Warning: Could not set permissions on /sys"
 
 mkdir -p /var/log
 dmesg > /var/log/dmesg.log
@@ -866,6 +870,9 @@ build_kernel() {
         ./scripts/config --disable CONFIG_SOUND
         ./scripts/config --disable CONFIG_SND
         
+        ./scripts/config --disable CONFIG_EARLY_PRINTK
+        ./scripts/config --enable CONFIG_DRM_KMS_HELPER
+        
         # Save
         cp .config "${CONFIG_DIR}/kernel.config"
     fi
@@ -883,17 +890,19 @@ build_kernel() {
     log "Kernel build complete."
 }
 
-create_uefi_disk_image() {
-    log "Creating UEFI disk image..."
+create_hybrid_disk_image() {
+    log "Creating Hybrid BIOS/UEFI disk image..."
     
     log "Creating raw disk image of ${IMAGE_SIZE}MB..."
     dd if=/dev/zero of="${DISK_IMG}" bs=1M count="${IMAGE_SIZE}" status=progress
     
-    log "Partitioning disk image..."
+    log "Partitioning disk image for hybrid boot..."
     parted -s "${DISK_IMG}" mklabel gpt
-    parted -s "${DISK_IMG}" mkpart ESP fat32 1MiB 100%
-    parted -s "${DISK_IMG}" set 1 esp on
-    parted -s "${DISK_IMG}" set 1 boot on
+    parted -s "${DISK_IMG}" mkpart bios_boot 1MiB 2MiB
+    parted -s "${DISK_IMG}" set 1 bios_grub on
+    parted -s "${DISK_IMG}" mkpart ESP fat32 2MiB 100%
+    parted -s "${DISK_IMG}" set 2 esp on
+    parted -s "${DISK_IMG}" set 2 boot on
     
     log "Setting up loopback device..."
     LOOP_DEV=$(sudo losetup -f --show -P "${DISK_IMG}")
@@ -901,23 +910,49 @@ create_uefi_disk_image() {
         error "Failed to set up loopback device."
     fi
     
-    log "Formatting EFI partition..."
-    sudo mkfs.vfat -F 32 "${LOOP_DEV}p1"
+    log "Formatting EFI partition (p2)..."
+    sudo mkfs.vfat -F 32 "${LOOP_DEV}p2"
     
     log "Mounting EFI partition..."
     mkdir -p "${BUILD_DIR}/mnt"
-    sudo mount "${LOOP_DEV}p1" "${BUILD_DIR}/mnt"
+    sudo mount "${LOOP_DEV}p2" "${BUILD_DIR}/mnt"
     
-    log "Copying kernel to EFI partition..."
-    sudo mkdir -p "${BUILD_DIR}/mnt/EFI/BOOT"
-    sudo cp "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" "${BUILD_DIR}/mnt/EFI/BOOT/BOOTX64.EFI"
+    log "Installing GRUB for BIOS..."
+    sudo grub-install --target=i386-pc --boot-directory="${BUILD_DIR}/mnt/boot" --no-floppy --force "${LOOP_DEV}"
     
-    log "Creating UEFI startup script..."
-    cat <<EOF | sudo tee "${BUILD_DIR}/mnt/startup.nsh" > /dev/null
-@echo -off
-echo Loading ${OS_NAME}...
-\EFI\BOOT\BOOTX64.EFI
+    log "Installing GRUB for UEFI..."
+    sudo grub-install --target=x86_64-efi --boot-directory="${BUILD_DIR}/mnt/boot" --efi-directory="${BUILD_DIR}/mnt" --removable
+    
+    log "Copying kernel to boot directory..."
+    sudo cp "${KERNEL_SRC_DIR}/arch/x86/boot/bzImage" "${BUILD_DIR}/mnt/boot/"
+    
+    log "Creating GRUB configuration file..."
+    cat <<EOF | sudo tee "${BUILD_DIR}/mnt/boot/grub/grub.cfg" > /dev/null
+set timeout=3
+set default=0
+
+# This menu entry will be automatically hidden by GRUB in BIOS mode.
+# It will only be visible when booting via UEFI.
+if [ "\$grub_platform" = "efi" ]; then
+    menuentry "${OS_NAME} (UEFI Mode)" {
+        linux /boot/bzImage quiet loglevel=0
+    }
+fi
+
+# This menu entry will be automatically hidden by GRUB in UEFI mode.
+# It will only be visible when booting via BIOS.
+if [ "\$grub_platform" = "pc" ]; then
+    menuentry "${OS_NAME} (BIOS Mode)" {
+        linux /boot/bzImage quiet loglevel=0 efi=off
+    }
+fi
+
+# A verbose/debug entry that is always visible.
+menuentry "${OS_NAME} (Verbose Debug Mode)" {
+    linux /boot/bzImage console=tty0 console=ttyS0
+}
 EOF
+
     
     cat <<EOF | sudo tee "${BUILD_DIR}/mnt/README.txt" > /dev/null
 ${OS_NAME} - A minimal Linux distribution with native NTFS3 support
@@ -926,10 +961,10 @@ Kernel version: ${KERNEL_VER}
 BusyBox version: ${BUSYBOX_VER}
 NTFS support: Native kernel NTFS3 driver
 
-This is a bootable UEFI image. To boot:
-1. Make sure UEFI boot is enabled
-2. Boot from this device
-3. The system should automatically start as root
+This is a hybrid BIOS/UEFI bootable image. To boot:
+1. Make sure your system's boot mode (UEFI or Legacy/CSM) is enabled.
+2. Boot from this device.
+3. The GRUB menu should appear, and the system will start automatically.
 
 NTFS Support (Native Kernel Driver):
 - Mount NTFS drives: mount -t ntfs3 /dev/sdXN /mnt
@@ -946,7 +981,50 @@ EOF
     sudo losetup -d "${LOOP_DEV}"
     LOOP_DEV=""
     
-    log "UEFI disk image created at ${DISK_IMG}"
+    log "Hybrid BIOS/UEFI disk image created at ${DISK_IMG}"
+}
+
+create_image_contents_zip() {
+    log "Creating zip archive of image contents..."
+    local zip_mnt_dir="${BUILD_DIR}/zip_mnt"
+    local zip_loop_dev=""
+    local zip_file="${BUILD_DIR}/${OS_NAME}_contents.zip"
+
+    # Ensure the image file exists
+    if [ ! -f "${DISK_IMG}" ]; then
+        error "Disk image ${DISK_IMG} not found. Cannot create zip file."
+    fi
+
+    # Cleanup function specific to this operation
+    zip_cleanup() {
+        if mountpoint -q "${zip_mnt_dir}"; then
+            sudo umount "${zip_mnt_dir}"
+        fi
+        if [ -n "${zip_loop_dev}" ] && losetup -a | grep -q "${zip_loop_dev}"; then
+            sudo losetup -d "${zip_loop_dev}"
+        fi
+        rm -rf "${zip_mnt_dir}"
+    }
+    trap zip_cleanup RETURN
+
+    mkdir -p "${zip_mnt_dir}"
+
+    log "Setting up loopback device for zipping..."
+    zip_loop_dev=$(sudo losetup -f --show -P "${DISK_IMG}")
+    if [ -z "$zip_loop_dev" ]; then
+        error "Failed to set up loopback device for zipping."
+    fi
+
+    log "Mounting image partition to temporary directory..."
+    sudo mount "${zip_loop_dev}p2" "${zip_mnt_dir}"
+
+    log "Creating zip file at ${zip_file}..."
+    (
+        cd "${zip_mnt_dir}" && \
+        sudo zip -r "${zip_file}" . > "${LOG_DIR}/zip_creation.log" 2>&1
+    ) || error "Failed to create zip file. See ${LOG_DIR}/zip_creation.log for details."
+
+    log "Image contents successfully archived."
 }
 
 write_to_usb() {
@@ -1011,37 +1089,45 @@ write_to_usb() {
     
     log "Image successfully written to USB drive."
     echo ""
-    echo -e "${GREEN}${BOLD}You can now boot your laptop from this USB drive.${NC}"
-    echo -e "${GREEN}Use UEFI boot mode in your BIOS/firmware settings.${NC}"
+    echo -e "${GREEN}${BOLD}You can now boot your computer from this USB drive.${NC}"
+    echo -e "${GREEN}Use either BIOS or UEFI boot mode in your firmware settings.${NC}"
 }
 
 run_qemu() {
     log "Testing in QEMU..."
     
-    OVMF_PATH="/usr/share/ovmf/x64/OVMF.4m.fd"
-    if [ ! -f "$OVMF_PATH" ]; then
-        OVMF_PATH="/usr/share/ovmf/x64/OVMF.fd"
-        if [ ! -f "$OVMF_PATH" ]; then
-            error "OVMF firmware not found. Please install 'ovmf'."
-        fi
-    fi
+    read -p "Which mode to test? (uefi/bios) [uefi]: " QEMU_MODE
     
-    log "Starting QEMU with ${MEMORY} of RAM..."
-    qemu-system-x86_64 \
-        -machine q35,accel=kvm \
-        -cpu host \
-        -m "${MEMORY}" \
-        -smp 2 \
-        -bios "$OVMF_PATH" \
-        -drive file="${DISK_IMG}",format=raw,if=virtio \
-        -device intel-hda \
-        -device hda-output \
-        -nic user,model=e1000e \
-        -device usb-ehci \
-        -device usb-tablet \
-        -serial stdio \
-        -display gtk,gl=on \
+    QEMU_ARGS=(
+        -machine q35,accel=kvm
+        -cpu host
+        -m "${MEMORY}"
+        -smp 2
+        -drive file="${DISK_IMG}",format=raw,if=virtio
+        -device intel-hda
+        -device hda-output
+        -nic user,model=e1000e
+        -device usb-ehci
+        -device usb-tablet
+        -serial stdio
+        -display gtk,gl=on
         -no-reboot
+    )
+
+    if [[ "$QEMU_MODE" == "bios" ]]; then
+        log "Starting QEMU in BIOS mode..."
+        qemu-system-x86_64 "${QEMU_ARGS[@]}"
+    else
+        OVMF_PATH="/usr/share/ovmf/x64/OVMF.4m.fd"
+        if [ ! -f "$OVMF_PATH" ]; then
+            OVMF_PATH="/usr/share/ovmf/x64/OVMF.fd"
+            if [ ! -f "$OVMF_PATH" ]; then
+                error "OVMF firmware not found. Please install 'ovmf' to test UEFI mode."
+            fi
+        fi
+        log "Starting QEMU in UEFI mode with ${MEMORY} of RAM..."
+        qemu-system-x86_64 -bios "$OVMF_PATH" "${QEMU_ARGS[@]}"
+    fi
     
     echo ""
     read -p "Did the system boot correctly in QEMU? (y/n): " QEMU_RESULT
@@ -1065,6 +1151,7 @@ main() {
     echo -e "${BLUE}${BOLD}Building ${OS_NAME}${NC}"
     echo -e "${BLUE}Kernel version: ${KERNEL_VER}${NC}"
     echo -e "${BLUE}BusyBox version: ${BUSYBOX_VER}${NC}"
+    echo -e "${BLUE}Boot mode: Hybrid BIOS/UEFI${NC}"
     echo -e "${BLUE}NTFS support: Native kernel NTFS3 driver${NC}"
     echo -e "${BLUE}Using ${THREADS} threads for compilation${NC}"
     echo -e "${BLUE}Disk image size: ${IMAGE_SIZE}MB${NC}"
@@ -1082,7 +1169,8 @@ main() {
     create_initramfs_content
     install_custom_scripts
     build_kernel
-    create_uefi_disk_image
+    create_hybrid_disk_image
+    create_image_contents_zip
     
     if [ "${SKIP_QEMU:-0}" -ne 1 ]; then
         if [ "${QEMU_ONLY:-0}" -eq 1 ] || { read -p "Test in QEMU first? (y/n): " TEST_QEMU && [[ "$TEST_QEMU" == "y" || "$TEST_QEMU" == "Y" ]]; }; then
@@ -1105,8 +1193,10 @@ main() {
     echo -e "${GREEN}- OS Name: ${OS_NAME}${NC}"
     echo -e "${GREEN}- Kernel: ${KERNEL_VER}${NC}"
     echo -e "${GREEN}- BusyBox: ${BUSYBOX_VER}${NC}"
+    echo -e "${GREEN}- Boot Mode: Hybrid BIOS/UEFI${NC}"
     echo -e "${GREEN}- NTFS support: Native kernel NTFS3 driver${NC}"
     echo -e "${GREEN}- Image: ${DISK_IMG} ($(du -h "${DISK_IMG}" | cut -f1))${NC}"
+    echo -e "${GREEN}- Contents Archive: ${BUILD_DIR}/${OS_NAME}_contents.zip${NC}"
     echo -e "${GREEN}- Logs: ${LOG_DIR}${NC}"
     
     SCRIPT_COUNT=$(find "${INITRAMFS_DIR}/usr/local/bin" -type f 2>/dev/null | wc -l)
@@ -1139,4 +1229,3 @@ main() {
 }
 
 main "$@"
-
