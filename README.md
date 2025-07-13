@@ -19,8 +19,7 @@
 * [Security Notice](#-security-notice)
 * [Contributing](#-contributing)
 * [License](#-license)
-* [Changelog](#-changelog)
-* [Acknowledgments](#-acknowledgments)
+* [Screenshots](#-screenshots)
 
 ## IMPORTANT LEGAL NOTICE
 
