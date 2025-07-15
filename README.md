@@ -3,6 +3,8 @@
 **A specialized Linux distribution designed for penetration testing and Windows admin access bypass**
 
 ![PrivilegeOS Banner](docs/banner.png)
+*(yes, a real embroidery art done by meh... mmh peak artistry right there 🙂‍↕️)*
+
 
 ## 📋 Table of Contents
 
