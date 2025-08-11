@@ -803,7 +803,9 @@ free -m
 cat /proc/partitions
 ```
 
-#### Network Debugging```bash
+#### Network Debugging
+
+```bash
 # Check network interfaces
 ip addr show
 
