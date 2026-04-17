@@ -6,7 +6,7 @@
 *(yes, a real embroidery art done by meh... mmh peak artistry right there 🙂‍↕️)*
 
 
-## 📋 Table of Contents
+## Table of Contents
 
 * [Overview](#-overview)
 * [Features](#-features)
@@ -28,16 +28,16 @@
 **PrivilegeOS is intended for AUTHORIZED SECURITY TESTING ONLY**
 
 ### Permitted Use
-- ✅ Systems you own
-- ✅ Authorized penetration testing with written consent
-- ✅ Educational environments and labs
-- ✅ Security research with proper permissions
+-  Systems you own
+-  Authorized penetration testing with written consent
+-  Educational environments and labs
+-  Security research with proper permissions
 
 ### Prohibited Use
-- ❌ Unauthorized access to any system
-- ❌ Any illegal or malicious activities
-- ❌ Use without explicit written permission
-- ❌ Violating any local, state, or federal laws
+-  Unauthorized access to any system
+-  Any illegal or malicious activities
+-  Use without explicit written permission
+-  Violating any local, state, or federal laws
 
 ### User Responsibility
 By downloading, using, or distributing this software, you acknowledge:
@@ -64,7 +64,7 @@ This tool helps security professionals and students understand:
 - How to defend against these techniques
 - Proper security testing methodologies
 
-## 🔍 Overview
+## Overview
 
 PrivilegeOS is a minimal, bootable Linux distribution built specifically for penetration testing scenarios involving Windows systems. It features native NTFS3 kernel support, custom penetration testing tools, and specialized utilities for Windows admin access bypass techniques.
 
@@ -76,7 +76,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **NTFS3 Support**: Native kernel NTFS driver for reliable Windows filesystem access
 - **UEFI & Legacy BIOS Compatible**: Supports both modern and older firmware.
 
-## ✨ Features
+## Features
 
 ### Core System
 - **Linux Kernel**: 6.15.3 with custom configuration
@@ -100,7 +100,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **Command Aliases**: Simplified commands for common operations
 - **Help System**: Built-in documentation and examples
 
-## 💻 System Requirements
+## System Requirements
 
 ### Minimum Requirements
 - **CPU**: x86-64 compatible processor
@@ -114,7 +114,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 - **Graphics Cards**: Intel integrated, AMD, NVIDIA
 - **Input Devices**: USB keyboards, mice, touchpads
 
-## 🚀 Installation
+## Installation
 
 ### Quick Start: Method 1 (Image Burning)
 
@@ -148,7 +148,7 @@ PrivilegeOS is a minimal, bootable Linux distribution built specifically for pen
 4. Set the partition scheme to GPT for UEFI or MBR for Legacy BIOS.
 5. Click "START".
 
-## 💾 USB Writing Tool
+## USB Writing Tool
 
 PrivilegeOS includes a dedicated USB writing tool (`boot.sh`) for easy image deployment to USB drives.
 
@@ -264,7 +264,7 @@ ERROR: Disk image not found: missing.img
 
 All operations are logged to `build/logs/boot.log` for troubleshooting and audit purposes.
 
-## 📖 Usage
+## Usage
 
 ### First Boot
 
@@ -336,7 +336,7 @@ ip link set eth0 up
 | `poweroff` | Shutdown system | `poweroff` |
 | `reboot` | Restart system | `reboot` |
 
-## 🛠️ Built-in Tools
+## Built-in Tools
 
 ### Drive Management Tools
 
@@ -441,7 +441,7 @@ putadmin --help
 
 **Note:** `putadmin` now includes the same hibernation file handling capabilities as `getadmin`, making it consistent and able to handle hibernated Windows systems during restoration.
 
-## 🔧 Windows Admin Bypass
+## Windows Admin Bypass
 
 ### Overview
 
@@ -509,7 +509,7 @@ Both `getadmin` and `putadmin` can handle Windows hibernation files:
 
 ### Security Considerations
 
-⚠️ **WARNING**: This technique should only be used on systems you own or have explicit permission to test.
+ **WARNING**: This technique should only be used on systems you own or have explicit permission to test.
 
 - **Legal**: Ensure you have proper authorization.
 - **Detection**: May be detected by security software.
@@ -517,7 +517,7 @@ Both `getadmin` and `putadmin` can handle Windows hibernation files:
 - **Backup**: Always create backups before modification.
 - **Hibernation**: Deletion prevents hibernation resume (unsaved work will be lost).
 
-## 🔨 Building from Source
+## Building from Source
 
 ### Prerequisites
 
@@ -654,7 +654,7 @@ privilegeos/
 └── README.md                # This file
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Kernel Configuration
 
@@ -709,7 +709,7 @@ mount -t ntfs3 -o ro /dev/sda2 /mnt
 mount -t ntfs3 -o rw,force /dev/sda2 /mnt
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -852,7 +852,7 @@ find /mnt -name "hiberfil.sys" -ls 2>/dev/null
 - **GitHub Issues**: [Report bugs and request features](https://github.com/ktauchathuranga/privilegeos/issues)
 - **Discussions**: [Ask questions and share tips](https://github.com/ktauchathuranga/privilegeos/discussions)
 
-## 🔒 Security Notice
+## Security Notice
 
 ### Legal Disclaimer
 
@@ -882,7 +882,7 @@ This tool may leave traces including:
 - Event log entries
 - Deleted hibernation files
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from the security community!
 
@@ -955,7 +955,7 @@ git checkout -b develop
 qemu-system-x86_64 -bios /usr/share/ovmf/x64/OVMF.fd -drive file=build/PrivilegeOS.img,format=raw
 ```
 
-## 📄 License
+## License
 
 ### Third-Party Licenses
 
@@ -977,7 +977,7 @@ All other components maintain their respective licenses. See individual source f
 
 ---
 
-## 🫥 Screenshots
+## Screenshots
 
 ![Screenshot](docs/ss1.png)
 ![Screenshot](docs/ss2.png)
